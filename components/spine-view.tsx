@@ -44,6 +44,7 @@ export default function SpineView(props: SceneProps) {
       import('three/addons/postprocessing/EffectComposer.js'),
       import('three/addons/postprocessing/SSAOPass.js'),
       import('three/addons/postprocessing/OutputPass.js'),
+      import('three/addons/postprocessing/RenderPass.js'),
     ])
       .then(
         async ([
@@ -53,6 +54,7 @@ export default function SpineView(props: SceneProps) {
           { EffectComposer },
           { SSAOPass },
           { OutputPass },
+          { RenderPass },
         ]) => {
           const parts = await anatomy.loadAnatomy();
           if (disposed || !host.current) return;
@@ -98,6 +100,7 @@ export default function SpineView(props: SceneProps) {
           ao.kernelRadius = 0.32;
           ao.minDistance = 0.0002;
           ao.maxDistance = 0.03;
+          composer.addPass(new RenderPass(scene, camera));
           composer.addPass(ao);
           composer.addPass(new OutputPass());
           const compass = document.createElement('canvas');
