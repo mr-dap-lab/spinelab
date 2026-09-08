@@ -1,0 +1,22 @@
+BodyParts3D, (c) The Database Center for Life Science licensed under CC Attribution-Share Alike 2.1 Japan.
+https://creativecommons.org/licenses/by-sa/2.1/jp/
+
+Source meshes: BodyParts3D 3.0 / 20110915, 95% polygon-reduced distribution.
+STL conversion and redistribution: Kevin Mattheus Moerman / BodyParts3D
+https://github.com/Kevin-Mattheus-Moerman/BodyParts3D
+https://dbarchive.biosciencedbc.jp/data/bodyparts3d/20110915/
+
+Original research:
+Mitsuhashi N, Fujieda K, Tamura T, Kawamoto S, Takagi T, Okubo K.
+BodyParts3D: 3D structure database for anatomical concepts.
+Nucleic Acids Research. 2009;37(Database issue):D782–D785.
+https://doi.org/10.1093/nar/gkn613
+
+Changes for SpineLab:
+Selected 24 vertebrae, sacrum and 23 discs; welded duplicate vertices; packed indexed meshes into GLB; transformed axes from source (left, posterior, superior) into application (right, superior, posterior), centered and scaled uniformly by 0.04. Original neutral surface shapes retained. Smooth normals computed at runtime. Materials added. Modified disc scenarios deform source disc meshes; adjacent bones shift vertically to illustrate height reduction. Neural structures are separately constructed schematic overlays. These are educational illustrations, not validated biomechanical or patient-specific simulations.
+
+The redistributed anatomical GLB and its deformed anatomical derivatives remain available under CC BY-SA 2.1 Japan. Sources and SHA-256 checksums are in sources.json. No endorsement by DBCLS is implied.
+
+The archive's current license page (updated 2025-02-27) additionally offers its database under CC BY 4.0:
+https://dbarchive.biosciencedbc.jp/en/bodyparts3d/lic.html
+For the specific converted source distribution here, the original CC BY-SA 2.1 Japan attribution and share-alike terms are retained.

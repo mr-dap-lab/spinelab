@@ -1,0 +1,11 @@
+node_modules
+.git
+.openai
+.next
+.vinext
+.wrangler
+dist
+dist-selfhost
+.env*
+*.tar.gz
+*.tsbuildinfo
