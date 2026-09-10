@@ -13,3 +13,5 @@
 Rendering fix: added the missing base RenderPass before SSAO and OutputPass. SSAO blends shadows onto the previously rendered scene; without that base pass, the final canvas was blank even after geometry loaded.
 
 September 10 update: tested contact onset, displacement constraints, neutral release, and invariance under bone separation. The spatial index accelerates exact triangle intersections; it does not approximate disc contours with a bounding box. Browser QA confirmed localized red neural contact and separated bones in a phone viewport. All anatomy-layer controls remain available on mobile.
+
+Tissue update: verified background-drag panning and anatomy-drag rotation in the browser. Added all-level cutaway topology/finite-coordinate tests, frame-rate-independent spring convergence, and nucleus migration with annulus thinning. Internal layers are reconstructed and not medically validated.

@@ -1721,3 +1721,79 @@ h1 {
     min-height: 44px;
   }
 }
+.tissue-key {
+  display: grid;
+  gap: 9px;
+  padding: 14px;
+  margin: 10px 0 16px;
+  background: #26313d;
+  border: 1px solid #536575;
+  border-radius: 8px;
+  font-size: 12px;
+}
+.tissue-key span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tissue-key i {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 50%;
+}
+.annulus-key {
+  background: #b6d4d7;
+}
+.nucleus-key {
+  background: #657fac;
+}
+.tissue-key small {
+  color: #aebfcf;
+}
+.compare-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.scene-host > canvas:first-of-type {
+  cursor: grab;
+}
+.scene-host > canvas:first-of-type:active {
+  cursor: grabbing;
+}
+@media (min-width: 901px) {
+  .workspace {
+    align-items: start;
+  }
+  .viewport {
+    height: calc(100dvh - 68px);
+    min-height: 500px;
+    position: sticky;
+    top: 0;
+  }
+  .scene-area {
+    min-height: 0;
+    flex: 1;
+  }
+  .anatomy-panel,
+  .scenario-panel {
+    height: calc(100dvh - 68px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .viewport-top,
+  .camera-bar,
+  .viewport-bottom {
+    flex-shrink: 0;
+  }
+}
+@media (min-width: 701px) and (max-width: 900px) {
+  .viewport {
+    height: calc(85dvh - 68px);
+    min-height: 500px;
+  }
+  .scene-area {
+    min-height: 0;
+    flex: 1;
+  }
+}

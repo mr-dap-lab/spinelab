@@ -93,6 +93,8 @@ export default function Home() {
       'L4–L5': { ...DEFAULT_SCENARIO },
     });
   const [focus, setFocus] = useState(true),
+    [tissueSection, setTissueSection] = useState(false),
+    [motionTick, setMotionTick] = useState(0),
     [separation, setSeparation] = useState(0),
     [panMode, setPanMode] = useState(false),
     [cutaway, setCutaway] = useState(false),
@@ -217,6 +219,8 @@ export default function Home() {
     focus,
     cutaway,
     separation,
+    tissueSection,
+    motionTick,
     panMode,
     view,
     viewTick,
@@ -491,8 +495,8 @@ export default function Home() {
               Anatomy: BodyParts3D / DBCLS
             </a>
             <span>
-              <Move size={13} /> Drag to orbit · Pinch to zoom · Two fingers to
-              pan
+              <Move size={13} /> Drag anatomy to rotate · Drag background to pan
+              · Pinch to zoom
             </span>
             <div className="legend">
               <span>
@@ -574,6 +578,44 @@ export default function Home() {
             high="Broad"
           />
           <div className="section-rule" />
+          <div className="layer-row">
+            <label htmlFor="tissue-section">
+              <Layers3 size={16} />
+              Disc tissue cutaway
+            </label>
+            <Switch
+              id="tissue-section"
+              checked={tissueSection}
+              onCheckedChange={(v) => {
+                setTissueSection(v);
+                if (v) {
+                  setFocus(true);
+                  setCutaway(true);
+                  camera('section');
+                }
+              }}
+            />
+          </div>
+          {tissueSection && (
+            <div className="tissue-key">
+              <span>
+                <i className="annulus-key" />
+                Annulus fibrosus · layered ring
+              </span>
+              <span>
+                <i className="nucleus-key" />
+                Nucleus pulposus · gel-like core
+              </span>
+              <small>Illustrative internal anatomy</small>
+            </div>
+          )}
+          <button
+            className="compare-button"
+            onClick={() => setMotionTick((t) => t + 1)}
+            disabled={selected.bulge === 0 && selected.compression === 0}
+          >
+            Replay deformation <span>↻</span>
+          </button>
           <Parameter
             label="Separate bones"
             value={separation}
@@ -621,8 +663,9 @@ export default function Home() {
             </p>
             <span>
               Nerves deflect when the disc surface reaches them. Red marks
-              geometric contact, which does not necessarily cause pain. This
-              simplified response does not calculate tissue forces.
+              geometric contact, which does not necessarily cause pain. Annulus
+              and nucleus move together with damped animation. This educational
+              model does not calculate tissue forces or rupture.
             </span>
           </div>
           <button
@@ -646,8 +689,10 @@ export default function Home() {
               24 individually shaped vertebrae, the sacrum, and 23 discs from
               C2–C3 through L5–S1. Original mesh surfaces, spacing, and
               curvature are retained at the neutral setting. Neural pathways and
-              disc deformations are illustrative overlays. This reference body
-              is not your MRI.
+              disc deformations and internal disc layers are illustrative
+              reconstructions. The cutaway uses educational colors to
+              distinguish annulus and nucleus. This reference body is not your
+              MRI.
             </p>
             <p>
               The spinal cord transitions to a bundle of nerve roots in the

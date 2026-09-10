@@ -11,7 +11,7 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:3000. Use **Disc detail** to inspect the selected level. Drag to orbit, scroll/pinch to zoom, and right-drag to pan. The camera buttons and level controls are keyboard accessible. WebGL 2 and hardware acceleration are required.
+Open http://localhost:3000. Use **Disc detail** to inspect the selected level. Drag directly on anatomy to rotate. Drag empty canvas to pan vertically or horizontally; scroll/pinch to zoom. Enable **Disc tissue cutaway** to reveal the annulus lamellae and nucleus, and use **Replay deformation** to watch their motion. The camera buttons and level controls are keyboard accessible. WebGL 2 and hardware acceleration are required.
 
 ## Deploy on your own server
 
@@ -50,6 +50,8 @@ The normal `npm run build` builds the separate Sites/Cloudflare target. `npm run
 - Height reduction changes the disc's local thickness and shifts superior bones vertically. It does not simulate posture, loading forces, joint mechanics, exercise, or treatment.
 - Neural pathways are explicitly schematic, and not patient-specific. The spinal cord transitions to nerve roots in the upper lumbar region.
 - “Separate bones” shifts bones away from the disc/neural assembly without changing collision calculations.
+- The selected disc can show 16 reconstructed annulus lamellae and a gel-like nucleus. Their shared deformation field illustrates nucleus migration and annulus thinning, with a critically damped animation. It does not simulate material rupture, extrusion, or calibrated fluid/solid mechanics.
+- Neural overlays include packed lumbar root bundles, paired converging roots, distal branches, and spindle-shaped ganglia. These remain schematic, not patient-derived nerve anatomy.
 - Nerves respond to posterior disc-surface contact using sampled geometric constraints and a spring-like smoothing solver. Red denotes contact, not pain. Displacement is constrained posteriorly; this is not a 3D tissue-mechanics or force simulation.
 - Camera controls include orbit, pan, zoom, anatomical presets, and reframing. Phone layouts keep the viewer visible above scrolling controls.
 - “Expose disc” removes the upper vertebra from the close-up; this is a visibility control, not a surgical simulation.
@@ -76,3 +78,5 @@ Geometry tests validate mesh coverage, finite coordinates and triangle indices, 
 - [Converted source mesh distribution](https://github.com/Kevin-Mattheus-Moerman/BodyParts3D)
 - [BodyParts3D archive and license](https://dbarchive.biosciencedbc.jp/en/bodyparts3d/lic.html)
 - [AANS: Herniated Disc](https://www.aans.org/patients/conditions-treatments/herniated-disc/)
+
+- [Intervertebral disc anatomy — NCBI Bookshelf](https://www.ncbi.nlm.nih.gov/books/NBK470583/)

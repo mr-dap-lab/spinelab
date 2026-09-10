@@ -162,3 +162,73 @@ test('neutral nerves have no contact; a broad posterior herniation pushes and hi
   );
   for (const m of [neutral, pushed, separated, restored]) disposeModel(m.group);
 });
+
+test('disc cutaway has nested lamellae and a distinct nucleus at all levels', () => {
+  for (const level of LEVELS) {
+    const m = scene(
+      level,
+      {
+        [level]: {
+          ...NEUTRAL_SCENARIO,
+          bulge: 100,
+          compression: 60,
+          direction: 35,
+          spread: 65,
+        },
+      },
+      { tissueSection: true, cutaway: true },
+    );
+    const tissues = [];
+    m.group.traverse((o) => {
+      if (o.userData.tissue) tissues.push(o);
+    });
+    assert.equal(
+      tissues.filter((o) => o.userData.tissue === 'nucleus').length,
+      1,
+    );
+    assert.equal(
+      tissues.filter((o) => o.userData.tissue === 'annulus').length,
+      32,
+    );
+    finiteModel(m);
+    disposeModel(m.group);
+  }
+});
+
+test('damped tissue motion converges consistently across frame rates', async () => {
+  const { springStep } = await import('../lib/animation.js');
+  const simulate = (dt) => {
+    let x = 0,
+      v = 0;
+    for (let t = 0; t < 2 - dt / 2; t += dt) {
+      [x, v] = springStep(x, v, 100, dt);
+      assert.ok(x >= 0 && x <= 100);
+    }
+    return x;
+  };
+  assert.ok(Math.abs(simulate(1 / 60) - simulate(1 / 20)) < 0.001);
+  assert.ok(Math.abs(simulate(1 / 20) - 100) < 0.001);
+});
+
+test('posterior nucleus migration stretches and thins the annulus without crossing its exterior', async () => {
+  const { deformPoint } = await import('../lib/disc-tissue.js');
+  const { Vector3 } = await import('three');
+  const p = parts.find((p) => p.label === 'L4–L5');
+  const inner = p.center
+    .clone()
+    .add(new Vector3(0, p.slope * p.size.z * 0.29, p.size.z * 0.29));
+  const outer = p.center
+    .clone()
+    .add(new Vector3(0, p.slope * p.size.z * 0.5, p.size.z * 0.5));
+  const scenario = {
+    ...NEUTRAL_SCENARIO,
+    bulge: 100,
+    direction: 0,
+    spread: 65,
+  };
+  const core = deformPoint(p, scenario, inner),
+    shell = deformPoint(p, scenario, outer);
+  assert.ok(core.z > inner.z);
+  assert.ok(shell.z - core.z > 0);
+  assert.ok(shell.z - core.z < outer.z - inner.z);
+});

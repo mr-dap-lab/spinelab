@@ -1,5 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { springStep } from '@/lib/animation.js';
+import { NEUTRAL_SCENARIO } from '@/lib/scenarios.js';
 import { LoaderCircle, TriangleAlert } from 'lucide-react';
 
 export type CameraPose = {
@@ -22,6 +24,8 @@ export type SceneProps = {
   };
   separation?: number;
   panMode?: boolean;
+  tissueSection?: boolean;
+  motionTick?: number;
   focus: boolean;
   cutaway: boolean;
   view: string;
@@ -70,6 +74,7 @@ export default function SpineView(props: SceneProps) {
             alpha: true,
             powerPreference: 'high-performance',
           });
+          renderer.localClippingEnabled = true;
           renderer.setPixelRatio(
             Math.min(
               devicePixelRatio,
@@ -89,7 +94,8 @@ export default function SpineView(props: SceneProps) {
           const camera = new T.PerspectiveCamera(34, 1, 0.05, 200);
           camera.position.set(21, 7, 39);
           const controls = new OrbitControls(camera, renderer.domElement);
-          controls.enableDamping = true;
+          controls.enableDamping = false;
+          controls.screenSpacePanning = true;
           controls.dampingFactor = 0.09;
           controls.minDistance = 0.4;
           controls.maxDistance = 180;
@@ -198,6 +204,7 @@ export default function SpineView(props: SceneProps) {
               anterior: [0, 0.02, -1],
               side: [1, 0.03, 0],
               axial: [0, 1, 0.0001],
+              section: [0, 1.7, -1.2],
             };
             const v = vectors[view] || vectors.oblique;
             const end = new T.Vector3(...(v as [number, number, number]))
@@ -220,16 +227,43 @@ export default function SpineView(props: SceneProps) {
                 start: performance.now(),
               };
           }
+          let desired = latest.current;
+          let displayed = structuredClone(desired.scenarios);
+          let velocities: Record<string, Record<string, number>> = {};
+          let lastMotion = desired.motionTick,
+            lastStep = 0;
           function update(next: SceneProps) {
+            if (
+              !model ||
+              next.level !== desired.level ||
+              matchMedia('(prefers-reduced-motion: reduce)').matches
+            )
+              displayed = structuredClone(next.scenarios);
+            if (
+              next.motionTick !== lastMotion &&
+              !matchMedia('(prefers-reduced-motion: reduce)').matches
+            ) {
+              velocities = {};
+              displayed = {
+                ...next.scenarios,
+                [next.level]: {
+                  ...(next.scenarios[next.level] || NEUTRAL_SCENARIO),
+                  bulge: 0,
+                  compression: 0,
+                },
+              };
+              lastMotion = next.motionTick;
+            }
+            desired = next;
+            rebuild({ ...next, scenarios: displayed });
+          }
+          function rebuild(next: SceneProps) {
             needsRender = true;
             if (model) {
               scene.remove(model.group);
               anatomy.disposeModel(model.group);
             }
-            controls.mouseButtons.LEFT = next.panMode
-              ? T.MOUSE.PAN
-              : T.MOUSE.ROTATE;
-            controls.touches.ONE = next.panMode ? T.TOUCH.PAN : T.TOUCH.ROTATE;
+
             model = anatomy.buildSpine(next, parts);
             setContactCount(model.contactCount);
             scene.add(model.group);
@@ -264,12 +298,38 @@ export default function SpineView(props: SceneProps) {
           const ray = new T.Raycaster(),
             pointer = new T.Vector2();
           let down = [0, 0];
+          const activePointers = new Set<number>();
+          let multiTouch = false;
           const onDown = (e: PointerEvent) => {
+            activePointers.add(e.pointerId);
+            if (activePointers.size === 1) multiTouch = false;
+            else multiTouch = true;
             down = [e.clientX, e.clientY];
             tween = null;
+            const rect = renderer.domElement.getBoundingClientRect();
+            pointer.set(
+              ((e.clientX - rect.left) / rect.width) * 2 - 1,
+              (-(e.clientY - rect.top) / rect.height) * 2 + 1,
+            );
+            scene.updateMatrixWorld(true);
+            ray.setFromCamera(pointer, camera);
+            const overAnatomy = ray
+              .intersectObject(model.group, true)
+              .some((hit) => {
+                const mat = (hit.object as any).material;
+                return !mat?.clippingPlanes?.some(
+                  (plane: any) => plane.distanceToPoint(hit.point) < 0,
+                );
+              });
+            const pan = latest.current.panMode || !overAnatomy;
+            controls.mouseButtons.LEFT = pan ? T.MOUSE.PAN : T.MOUSE.ROTATE;
+            controls.touches.ONE = pan ? T.TOUCH.PAN : T.TOUCH.ROTATE;
+            renderer.domElement.dataset.dragMode = pan ? 'pan' : 'rotate';
           };
           const onUp = (e: PointerEvent) => {
+            activePointers.delete(e.pointerId);
             if (
+              multiTouch ||
               latest.current.panMode ||
               e.button !== 0 ||
               Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5
@@ -307,10 +367,65 @@ export default function SpineView(props: SceneProps) {
           };
           link?.listeners.add(receive);
           controls.addEventListener('change', publish);
-          renderer.domElement.addEventListener('pointerdown', onDown);
+          renderer.domElement.addEventListener('pointerdown', onDown, true);
+          const onCancel = (e: PointerEvent) =>
+            activePointers.delete(e.pointerId);
+          renderer.domElement.addEventListener('pointercancel', onCancel);
           renderer.domElement.addEventListener('pointerup', onUp);
           function frame() {
             raf = requestAnimationFrame(frame);
+            const now = performance.now();
+            if (now - lastStep >= 45) {
+              const dt = Math.min(0.1, (now - lastStep) / 1000);
+              lastStep = now;
+              let changed = false;
+              const nextDisplay = { ...displayed };
+              for (const level of new Set([
+                ...Object.keys(desired.scenarios),
+                ...Object.keys(displayed),
+              ])) {
+                const target = desired.scenarios[level] || NEUTRAL_SCENARIO;
+                const current = displayed[level] || NEUTRAL_SCENARIO;
+                const next = { ...current };
+                const speed = (velocities[level] ||= {});
+                for (const key of [
+                  'bulge',
+                  'compression',
+                  'direction',
+                  'spread',
+                ] as const) {
+                  if (
+                    Math.abs(current[key] - target[key]) > 0.015 ||
+                    Math.abs(speed[key] || 0) > 0.05
+                  ) {
+                    const [value, velocity] = springStep(
+                      current[key],
+                      speed[key] || 0,
+                      target[key],
+                      dt,
+                    );
+                    const bounds =
+                      key === 'direction'
+                        ? [-60, 60]
+                        : key === 'spread'
+                          ? [12, 65]
+                          : [0, key === 'compression' ? 60 : 100];
+                    next[key] = Math.max(bounds[0], Math.min(bounds[1], value));
+                    speed[key] = velocity;
+                    changed = true;
+                  } else {
+                    next[key] = target[key];
+                    speed[key] = 0;
+                    if (next[key] !== current[key]) changed = true;
+                  }
+                }
+                nextDisplay[level] = next;
+              }
+              if (changed) {
+                displayed = nextDisplay;
+                rebuild({ ...desired, scenarios: displayed });
+              }
+            }
             if (tween) {
               const t = Math.min(1, (performance.now() - tween.start) / 650),
                 ease = 1 - (1 - t) ** 3;
@@ -348,7 +463,12 @@ export default function SpineView(props: SceneProps) {
             composer.dispose();
             renderer.dispose();
             compass.remove();
-            renderer.domElement.removeEventListener('pointerdown', onDown);
+            renderer.domElement.removeEventListener(
+              'pointerdown',
+              onDown,
+              true,
+            );
+            renderer.domElement.removeEventListener('pointercancel', onCancel);
             renderer.domElement.removeEventListener('pointerup', onUp);
             renderer.domElement.removeEventListener('webglcontextlost', onLost);
             renderer.domElement.remove();
@@ -373,6 +493,8 @@ export default function SpineView(props: SceneProps) {
     props.layers,
     props.focus,
     props.cutaway,
+    props.tissueSection,
+    props.motionTick,
     props.separation,
     props.panMode,
   ]);
