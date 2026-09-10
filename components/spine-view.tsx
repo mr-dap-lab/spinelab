@@ -20,10 +20,13 @@ export type SceneProps = {
     nerves: boolean;
     boneOpacity: number;
   };
+  separation?: number;
+  panMode?: boolean;
   focus: boolean;
   cutaway: boolean;
   view: string;
   viewTick: number;
+  cameraCommand?: string;
   onSelect: (level: string) => void;
 };
 export default function SpineView(props: SceneProps) {
@@ -33,6 +36,7 @@ export default function SpineView(props: SceneProps) {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>(
     'loading',
   );
+  const [contactCount, setContactCount] = useState(0);
   latest.current = props;
   useEffect(() => {
     let disposed = false,
@@ -66,7 +70,12 @@ export default function SpineView(props: SceneProps) {
             alpha: true,
             powerPreference: 'high-performance',
           });
-          renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+          renderer.setPixelRatio(
+            Math.min(
+              devicePixelRatio,
+              matchMedia('(max-width: 700px)').matches ? 1.25 : 1.75,
+            ),
+          );
           renderer.setClearColor(0x000000, 0);
           renderer.outputColorSpace = T.SRGBColorSpace;
           renderer.toneMapping = T.ACESFilmicToneMapping;
@@ -82,8 +91,8 @@ export default function SpineView(props: SceneProps) {
           const controls = new OrbitControls(camera, renderer.domElement);
           controls.enableDamping = true;
           controls.dampingFactor = 0.09;
-          controls.minDistance = 3;
-          controls.maxDistance = 75;
+          controls.minDistance = 0.4;
+          controls.maxDistance = 180;
           controls.enablePan = true;
           scene.add(new T.HemisphereLight(0xf4f2ee, 0x555666, 1.65));
           const key = new T.DirectionalLight(0xfff7eb, 2.7);
@@ -97,6 +106,7 @@ export default function SpineView(props: SceneProps) {
           scene.add(fill);
           const composer = new EffectComposer(renderer),
             ao = new SSAOPass(scene, camera, 1, 1);
+          ao.enabled = !matchMedia('(max-width: 700px)').matches;
           ao.kernelRadius = 0.32;
           ao.minDistance = 0.0002;
           ao.maxDistance = 0.03;
@@ -154,22 +164,36 @@ export default function SpineView(props: SceneProps) {
           }
           let model: any = null,
             raf = 0,
+            needsRender = true,
             tween: any = null,
             lastFocus: boolean | undefined,
             lastLevel: string | undefined;
           function moveCamera(view: string, instant = false) {
-            const target = model.target.clone(),
+            if (view === 'zoom-in' || view === 'zoom-out') {
+              tween = null;
+              const offset = camera.position.clone().sub(controls.target);
+              offset.setLength(
+                T.MathUtils.clamp(
+                  offset.length() * (view === 'zoom-in' ? 0.78 : 1.28),
+                  controls.minDistance,
+                  controls.maxDistance,
+                ),
+              );
+              camera.position.copy(controls.target).add(offset);
+              controls.update();
+              return;
+            }
+            const target = model.bounds.getCenter(new T.Vector3()),
               size = model.bounds.getSize(new T.Vector3()),
               distance =
                 (Math.max(
-                  size.y,
-                  size.x / Math.max(camera.aspect, 0.25),
-                  size.z / Math.max(camera.aspect, 0.25),
+                  size.length(),
+                  size.length() / Math.max(camera.aspect, 0.25),
                 ) /
                   (2 * Math.tan((camera.fov * Math.PI) / 360))) *
                 1.25;
             const vectors: Record<string, number[]> = {
-              oblique: [1, 0.35, -1.25],
+              oblique: [1, 0.35, 1.25],
               posterior: [0, 0.02, 1],
               anterior: [0, 0.02, -1],
               side: [1, 0.03, 0],
@@ -197,11 +221,17 @@ export default function SpineView(props: SceneProps) {
               };
           }
           function update(next: SceneProps) {
+            needsRender = true;
             if (model) {
               scene.remove(model.group);
               anatomy.disposeModel(model.group);
             }
+            controls.mouseButtons.LEFT = next.panMode
+              ? T.MOUSE.PAN
+              : T.MOUSE.ROTATE;
+            controls.touches.ONE = next.panMode ? T.TOUCH.PAN : T.TOUCH.ROTATE;
             model = anatomy.buildSpine(next, parts);
+            setContactCount(model.contactCount);
             scene.add(model.group);
             if (lastFocus !== next.focus || lastLevel !== next.level) {
               moveCamera(next.view, lastFocus === undefined);
@@ -210,14 +240,22 @@ export default function SpineView(props: SceneProps) {
             }
           }
           function resize() {
+            needsRender = true;
             const w = container.clientWidth,
               h = container.clientHeight;
             if (!w || !h) return;
             renderer.setSize(w, h);
             composer.setSize(w, h);
+            const previousAspect = camera.aspect;
             camera.aspect = w / h;
+            if (model && camera.aspect < previousAspect) {
+              camera.position
+                .sub(controls.target)
+                .multiplyScalar(previousAspect / camera.aspect)
+                .add(controls.target);
+              controls.update();
+            }
             camera.updateProjectionMatrix();
-            if (model) moveCamera(latest.current.view, true);
           }
           const observer = new ResizeObserver(resize);
           observer.observe(container);
@@ -231,7 +269,11 @@ export default function SpineView(props: SceneProps) {
             tween = null;
           };
           const onUp = (e: PointerEvent) => {
-            if (Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5)
+            if (
+              latest.current.panMode ||
+              e.button !== 0 ||
+              Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5
+            )
               return;
             const rect = renderer.domElement.getBoundingClientRect();
             pointer.set(
@@ -253,6 +295,7 @@ export default function SpineView(props: SceneProps) {
             receiving = false;
           };
           const publish = () => {
+            needsRender = true;
             if (receiving || !link) return;
             const pose: CameraPose = {
               position: camera.position.toArray() as [number, number, number],
@@ -279,9 +322,12 @@ export default function SpineView(props: SceneProps) {
               );
               if (t === 1) tween = null;
             }
-            controls.update();
-            composer.render();
-            drawCompass();
+            const moved = controls.update();
+            if (needsRender || moved || tween) {
+              composer.render();
+              drawCompass();
+              needsRender = false;
+            }
           }
           frame();
           engine.current = { update, moveCamera };
@@ -321,12 +367,34 @@ export default function SpineView(props: SceneProps) {
   }, []);
   useEffect(() => {
     engine.current?.update(props);
-  }, [props.level, props.scenarios, props.layers, props.focus, props.cutaway]);
+  }, [
+    props.level,
+    props.scenarios,
+    props.layers,
+    props.focus,
+    props.cutaway,
+    props.separation,
+    props.panMode,
+  ]);
   useEffect(() => {
-    engine.current?.moveCamera(props.view);
+    engine.current?.moveCamera(props.cameraCommand || props.view);
   }, [props.view, props.viewTick]);
   return (
     <div className="scene-host" ref={host}>
+      {status === 'ready' && (
+        <div
+          className={'contact-indicator ' + (contactCount ? 'is-contact' : '')}
+          role="status"
+        >
+          <i />
+          {!props.layers.nerves
+            ? 'Neural structures hidden'
+            : contactCount
+              ? 'Disc–nerve contact'
+              : 'No disc–nerve contact detected'}
+          <small>Illustrative contact · not a pain prediction</small>
+        </div>
+      )}
       {status !== 'ready' && (
         <div className="scene-status">
           {status === 'loading' ? (

@@ -132,3 +132,33 @@ test('expose-disc removes the upper bone without changing the source disc', () =
   disposeModel(normal.group);
   disposeModel(exposed.group);
 });
+
+test('neutral nerves have no contact; a broad posterior herniation pushes and highlights them', () => {
+  const neutral = scene('L4–L5');
+  assert.equal(neutral.contactCount, 0);
+  const scenario = {
+    'L4–L5': { ...NEUTRAL_SCENARIO, bulge: 100, spread: 65, direction: 0 },
+  };
+  const pushed = scene('L4–L5', scenario);
+  assert.ok(pushed.contactCount > 0);
+  assert.ok(
+    pushed.nerveResponses.some((r) => Math.max(...r.displacement) > 0.03),
+  );
+  for (const r of pushed.nerveResponses)
+    for (let i = 0; i < r.required.length; i++)
+      assert.ok(r.displacement[i] >= r.required[i]);
+  const separated = scene('L4–L5', scenario, { separation: 100 });
+  assert.equal(separated.contactCount, pushed.contactCount);
+  assert.deepEqual(separated.nerveResponses, pushed.nerveResponses);
+  assert.ok(
+    separated.group.children.some(
+      (m) => m.userData.kind === 'bone' && m.position.x === 3.5,
+    ),
+  );
+  const restored = scene('L4–L5');
+  assert.equal(restored.contactCount, 0);
+  assert.ok(
+    restored.nerveResponses.every((r) => r.displacement.every((d) => d === 0)),
+  );
+  for (const m of [neutral, pushed, separated, restored]) disposeModel(m.group);
+});

@@ -93,8 +93,11 @@ export default function Home() {
       'L4–L5': { ...DEFAULT_SCENARIO },
     });
   const [focus, setFocus] = useState(true),
+    [separation, setSeparation] = useState(0),
+    [panMode, setPanMode] = useState(false),
     [cutaway, setCutaway] = useState(false),
     [view, setView] = useState('oblique'),
+    [cameraCommand, setCameraCommand] = useState('oblique'),
     [viewTick, setViewTick] = useState(0),
     [compare, setCompare] = useState(false),
     [about, setAbout] = useState(false);
@@ -117,7 +120,8 @@ export default function Home() {
   }
   function camera(next: string) {
     if (next === 'axial') setFocus(true);
-    setView(next);
+    setCameraCommand(next);
+    if (!next.startsWith('zoom-')) setView(next);
     setViewTick((t) => t + 1);
   }
   const cameraLink = useRef<CameraLink>({ listeners: new Set() });
@@ -212,8 +216,11 @@ export default function Home() {
     layers,
     focus,
     cutaway,
+    separation,
+    panMode,
     view,
     viewTick,
+    cameraCommand,
     onSelect: choose,
     cameraLink: cameraLink.current,
   };
@@ -434,6 +441,28 @@ export default function Home() {
             </div>
             <div className="camera-actions">
               <button
+                aria-label="Zoom in"
+                title="Zoom in"
+                onClick={() => camera('zoom-in')}
+              >
+                +
+              </button>
+              <button
+                aria-label="Zoom out"
+                title="Zoom out"
+                onClick={() => camera('zoom-out')}
+              >
+                −
+              </button>
+              <button
+                aria-label="Pan camera"
+                title="Toggle drag to pan"
+                aria-pressed={panMode}
+                onClick={() => setPanMode(!panMode)}
+              >
+                <Move size={17} />
+              </button>
+              <button
                 title="Reset camera"
                 aria-label="Reset camera"
                 onClick={() => camera('oblique')}
@@ -443,7 +472,10 @@ export default function Home() {
               <button
                 title="Focus selected disc"
                 aria-label="Focus selected disc"
-                onClick={() => setFocus(true)}
+                onClick={() => {
+                  setFocus(true);
+                  camera('oblique');
+                }}
               >
                 <Focus size={18} />
               </button>
@@ -459,7 +491,7 @@ export default function Home() {
               Anatomy: BodyParts3D / DBCLS
             </a>
             <span>
-              <Move size={13} /> Drag to orbit · Scroll to zoom · Right-drag to
+              <Move size={13} /> Drag to orbit · Pinch to zoom · Two fingers to
               pan
             </span>
             <div className="legend">
@@ -542,6 +574,18 @@ export default function Home() {
             high="Broad"
           />
           <div className="section-rule" />
+          <Parameter
+            label="Separate bones"
+            value={separation}
+            unit="%"
+            low="Assembled"
+            high="Exploded view"
+            onChange={setSeparation}
+          />
+          <p className="separation-note">
+            Moves bones aside to reveal discs and nerves together. Viewing aid
+            only.
+          </p>
           <div className="layer-row">
             <label htmlFor="cutaway">
               <Scan size={16} />
@@ -576,8 +620,9 @@ export default function Home() {
                 : 'A localized part of the disc extends beyond its baseline outline toward nearby neural structures.'}
             </p>
             <span>
-              Height and herniation are independent controls. No force or pain
-              is calculated.
+              Nerves deflect when the disc surface reaches them. Red marks
+              geometric contact, which does not necessarily cause pain. This
+              simplified response does not calculate tissue forces.
             </span>
           </div>
           <button

@@ -49,6 +49,9 @@ The normal `npm run build` builds the separate Sites/Cloudflare target. `npm run
 - Adjustable herniation uses a geometric deformation of the original disc mesh. It is **not** a validated finite-element or biomechanical model. The size slider is an illustrative 0–100 parameter, not millimeters or pressure.
 - Height reduction changes the disc's local thickness and shifts superior bones vertically. It does not simulate posture, loading forces, joint mechanics, exercise, or treatment.
 - Neural pathways are explicitly schematic, and not patient-specific. The spinal cord transitions to nerve roots in the upper lumbar region.
+- “Separate bones” shifts bones away from the disc/neural assembly without changing collision calculations.
+- Nerves respond to posterior disc-surface contact using sampled geometric constraints and a spring-like smoothing solver. Red denotes contact, not pain. Displacement is constrained posteriorly; this is not a 3D tissue-mechanics or force simulation.
+- Camera controls include orbit, pan, zoom, anatomical presets, and reframing. Phone layouts keep the viewer visible above scrolling controls.
 - “Expose disc” removes the upper vertebra from the close-up; this is a visibility control, not a surgical simulation.
 - The viewer does not estimate pain, neurologic impairment, or safe movement. Source anatomy itself can contain modeling errors. It is not your MRI.
 - Parameters are temporary browser memory; refresh resets them. No patient data is stored or transmitted by the application.
