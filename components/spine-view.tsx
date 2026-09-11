@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { DEFAULT_BODY } from '@/lib/body-settings.js';
 import { springStep } from '@/lib/animation.js';
 import { NEUTRAL_SCENARIO } from '@/lib/scenarios.js';
 import { LoaderCircle, TriangleAlert } from 'lucide-react';
@@ -10,6 +11,8 @@ export type CameraPose = {
 };
 export type CameraLink = { listeners: Set<(pose: CameraPose) => void> };
 export type SceneProps = {
+  body?: typeof DEFAULT_BODY;
+  onBodyPose?: (patch: Partial<typeof DEFAULT_BODY>) => void;
   cameraLink?: CameraLink;
   level: string;
   scenarios: Record<
@@ -34,6 +37,7 @@ export type SceneProps = {
   onSelect: (level: string) => void;
 };
 export default function SpineView(props: SceneProps) {
+  const phaseReadout = useRef<HTMLSpanElement>(null);
   const host = useRef<HTMLDivElement>(null),
     engine = useRef<any>(null),
     latest = useRef(props);
@@ -54,6 +58,7 @@ export default function SpineView(props: SceneProps) {
       import('three/addons/postprocessing/SSAOPass.js'),
       import('three/addons/postprocessing/OutputPass.js'),
       import('three/addons/postprocessing/RenderPass.js'),
+      import('@/lib/body-motion.js'),
     ])
       .then(
         async ([
@@ -64,6 +69,7 @@ export default function SpineView(props: SceneProps) {
           { SSAOPass },
           { OutputPass },
           { RenderPass },
+          { createBodyMotion, movementPose },
         ]) => {
           const parts = await anatomy.loadAnatomy();
           if (disposed || !host.current) return;
@@ -169,6 +175,8 @@ export default function SpineView(props: SceneProps) {
             }
             c.globalAlpha = 1;
           }
+          let bodyRig: any = null, bodyPhase = 0, bodyTime = 0, bodyConfig = latest.current.body || DEFAULT_BODY;
+          let lastBodyEnabled = false;
           let model: any = null,
             raf = 0,
             needsRender = true,
@@ -266,11 +274,20 @@ export default function SpineView(props: SceneProps) {
               anatomy.disposeModel(model.group);
             }
 
-            model = anatomy.buildSpine(next, parts);
+            bodyRig = null;
+            const enabled = latest.current.body?.enabled;
+            model = anatomy.buildSpine(enabled ? {...next, focus:false, cutaway:false, tissueSection:false, separation:0} : next, parts);
+            if(enabled) {
+              bodyRig = createBodyMotion(model, parts);
+              model.group.add(bodyRig.group);
+              model.bounds.copy(bodyRig.bounds);
+              bodyRig.update(latest.current.body, bodyPhase);
+            }
             setContactCount(model.contactCount);
             setBoneContact(model.boneContactCount > 0);
             scene.add(model.group);
-            if (lastFocus !== next.focus || lastLevel !== next.level) {
+            if (lastFocus !== next.focus || lastLevel !== next.level || lastBodyEnabled !== !!enabled) {
+              lastBodyEnabled = !!enabled;
               moveCamera(next.view, lastFocus === undefined);
               lastFocus = next.focus;
               lastLevel = next.level;
@@ -303,6 +320,16 @@ export default function SpineView(props: SceneProps) {
           let down = [0, 0];
           const activePointers = new Set<number>();
           let multiTouch = false;
+          let bodyDrag: {id:number;x:number;y:number;config:typeof DEFAULT_BODY} | null = null;
+          const onBodyMove = (e: PointerEvent) => {
+            if(!bodyDrag || e.pointerId!==bodyDrag.id) return;
+            e.stopImmediatePropagation();
+            const config=bodyDrag.config, axis=config.drag;
+            const value= axis==='hinge' || axis==='flexion' ? (bodyDrag.y-e.clientY)*.25 : (e.clientX-bodyDrag.x)*.25;
+            const limits: Record<string,number[]>={hinge:[-20,85],flexion:[-25,45],side:[-30,30],twist:[-45,45]};
+            const base=Number(config[axis as keyof typeof config]);
+            latest.current.onBodyPose?.({movement:'manual',playing:false,[axis]:T.MathUtils.clamp(base+value,...limits[axis] as [number,number])});
+          };
           const onDown = (e: PointerEvent) => {
             activePointers.add(e.pointerId);
             if (activePointers.size === 1) multiTouch = false;
@@ -316,6 +343,11 @@ export default function SpineView(props: SceneProps) {
             );
             scene.updateMatrixWorld(true);
             ray.setFromCamera(pointer, camera);
+            if(bodyRig && bodyConfig.drag!=='camera' && ray.intersectObjects(bodyRig.bodyPickables.filter((m:any)=>m.visible),false).length && e.button===0) {
+              bodyDrag={id:e.pointerId,x:e.clientX,y:e.clientY,config:{...bodyConfig,...movementPose(bodyConfig,bodyPhase)}};
+              controls.enabled=false; renderer.domElement.setPointerCapture(e.pointerId);
+              e.stopImmediatePropagation(); renderer.domElement.dataset.dragMode='pose'; return;
+            }
             const overAnatomy = ray
               .intersectObject(model.group, true)
               .some((hit) => {
@@ -330,6 +362,11 @@ export default function SpineView(props: SceneProps) {
             renderer.domElement.dataset.dragMode = pan ? 'pan' : 'rotate';
           };
           const onUp = (e: PointerEvent) => {
+            if(bodyDrag?.id===e.pointerId) {
+              bodyDrag=null;controls.enabled=true;activePointers.delete(e.pointerId);
+              if(renderer.domElement.hasPointerCapture(e.pointerId))renderer.domElement.releasePointerCapture(e.pointerId);
+              e.stopImmediatePropagation();return;
+            }
             activePointers.delete(e.pointerId);
             if (
               multiTouch ||
@@ -371,13 +408,19 @@ export default function SpineView(props: SceneProps) {
           link?.listeners.add(receive);
           controls.addEventListener('change', publish);
           renderer.domElement.addEventListener('pointerdown', onDown, true);
-          const onCancel = (e: PointerEvent) =>
-            activePointers.delete(e.pointerId);
+          const onCancel = (e: PointerEvent) => { activePointers.delete(e.pointerId); bodyDrag=null; controls.enabled=true; };
           renderer.domElement.addEventListener('pointercancel', onCancel);
-          renderer.domElement.addEventListener('pointerup', onUp);
+          renderer.domElement.addEventListener('pointerup', onUp, true);
+          renderer.domElement.addEventListener('pointermove', onBodyMove, true);
           function frame() {
             raf = requestAnimationFrame(frame);
             const now = performance.now();
+            if(bodyRig && now - bodyTime >= 33) {
+              const delta = Math.min(.1,(now-bodyTime)/1000); bodyTime=now;
+              if(bodyConfig.playing) bodyPhase=(bodyPhase+delta*bodyConfig.speed*100/6)%100;
+              if(bodyRig.update(bodyConfig,bodyPhase)) needsRender=true;
+              if(phaseReadout.current)phaseReadout.current.textContent=`Cycle ${Math.round(bodyPhase)}%`;
+            }
             if (now - lastStep >= 45) {
               const dt = Math.min(0.1, (now - lastStep) / 1000);
               lastStep = now;
@@ -449,7 +492,14 @@ export default function SpineView(props: SceneProps) {
             }
           }
           frame();
-          engine.current = { update, moveCamera };
+          engine.current = { update, moveCamera, updateBody: () => {
+            const next = latest.current.body || DEFAULT_BODY;
+            if(next.cycleTick !== bodyConfig.cycleTick || next.phase !== bodyConfig.phase || next.movement !== bodyConfig.movement) bodyPhase = next.phase;
+            const toggle = next.enabled !== bodyConfig.enabled;
+            bodyConfig = next; bodyTime = performance.now();
+            if(toggle) rebuild({...latest.current, scenarios:displayed});
+            needsRender = true;
+          }};
           setStatus('ready');
           const onLost = (event: Event) => {
             event.preventDefault();
@@ -473,7 +523,8 @@ export default function SpineView(props: SceneProps) {
               true,
             );
             renderer.domElement.removeEventListener('pointercancel', onCancel);
-            renderer.domElement.removeEventListener('pointerup', onUp);
+            renderer.domElement.removeEventListener('pointerup', onUp, true);
+            renderer.domElement.removeEventListener('pointermove', onBodyMove, true);
             renderer.domElement.removeEventListener('webglcontextlost', onLost);
             renderer.domElement.remove();
             engine.current = null;
@@ -489,6 +540,7 @@ export default function SpineView(props: SceneProps) {
       cleanup();
     };
   }, []);
+  useEffect(() => { engine.current?.updateBody(); }, [props.body]);
   useEffect(() => {
     engine.current?.update(props);
   }, [
@@ -518,7 +570,8 @@ export default function SpineView(props: SceneProps) {
             : contactCount
               ? 'Disc–nerve contact'
               : 'No disc–nerve contact detected'}
-          <small>Illustrative contact · not a pain prediction</small>
+          <small>{props.body?.enabled ? 'Contact from the disc scenario · not recalculated by pose' : 'Illustrative contact · not a pain prediction'}</small>
+          {props.body?.enabled && <small>Body motion · <span ref={phaseReadout}>Cycle 0%</span></small>}
           {boneContact && (
             <small>Disc constrained by rigid bone surfaces</small>
           )}

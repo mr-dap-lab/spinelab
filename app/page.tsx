@@ -32,6 +32,7 @@ import {
   NEUTRAL_SCENARIO,
   validateScenario,
 } from '@/lib/scenarios.js';
+import { DEFAULT_BODY, MOVEMENTS } from '@/lib/body-settings.js';
 type Scenario = {
   rupture: number;
   bulge: number;
@@ -88,6 +89,8 @@ function Parameter({
   );
 }
 export default function Home() {
+  const [body, setBody] = useState({...DEFAULT_BODY});
+  const updateBody = (patch: Partial<typeof DEFAULT_BODY>) => setBody(p => ({...p,...patch,cycleTick:patch.phase!==undefined?p.cycleTick+1:p.cycleTick}));
   const [level, setLevel] = useState('L4–L5'),
     [region, setRegion] = useState('L'),
     [scenarios, setScenarios] = useState<Record<string, Scenario>>({
@@ -215,6 +218,8 @@ export default function Home() {
     return () => lifecycle.abort();
   }, []);
   const sceneProps = {
+    body,
+    onBodyPose: updateBody,
     level,
     scenarios,
     layers,
@@ -534,6 +539,51 @@ export default function Home() {
           </div>
         </section>
         <aside className="scenario-panel">
+          <section className="body-controls" aria-label="Body and movement">
+            <div className="layer-row">
+              <label htmlFor="body-overlay">Human body & movement</label>
+              <Switch id="body-overlay" checked={body.enabled} onCheckedChange={v => updateBody({enabled:v,playing:false})} />
+            </div>
+            {body.enabled && <>
+              <p className="separation-note">Whole-body view · illustrative body proportions. Hide this layer to return to the disc cutaway.</p>
+              <Parameter label="Body opacity" value={body.opacity} unit="%" low="Transparent" high="Opaque" onChange={v=>updateBody({opacity:v})} />
+              <label className="body-select">Movement
+                <select value={body.movement} onChange={e=>updateBody({movement:e.target.value,phase:25,playing:false})}>
+                  {Object.entries(MOVEMENTS).map(([key,label])=><option key={key} value={key}>{label}</option>)}
+                </select>
+              </label>
+              {body.movement!=='manual' && <>
+                <div className="body-playback">
+                  <button onClick={()=>updateBody({playing:!body.playing})}>{body.playing?'Pause':'Play movement'}</button>
+                  <button onClick={()=>updateBody({phase:0,playing:false})}>Reset cycle</button>
+                </div>
+                <Parameter label="Scrub cycle (pauses playback)" value={body.phase} unit="%" low="Start" high="Full cycle" onChange={v=>updateBody({phase:v,playing:false})} />
+                <label className="body-select">Playback speed
+                  <select value={body.speed} onChange={e=>updateBody({speed:Number(e.target.value)})}>
+                    <option value={0.5}>Slow · ½×</option><option value={1}>Normal · 1×</option><option value={1.5}>Fast · 1½×</option>
+                  </select>
+                </label>
+              </>}
+              <label className="body-select">Drag the body to
+                <select value={body.drag} onChange={e=>updateBody({drag:e.target.value})}>
+                  <option value="hinge">Hinge at hips ↕</option><option value="flexion">Flex / extend spine ↕</option>
+                  <option value="side">Bend sideways ↔</option><option value="twist">Rotate trunk ↔</option><option value="camera">Orbit camera</option>
+                </select>
+              </label>
+              <p className="separation-note">Drag on the body to pose it. Drag the background to pan. Choose Orbit camera to turn the view. Sliders also work with keyboard and touch.</p>
+              {body.movement==='manual' && <>
+                <Parameter label="Hip hinge" value={Math.round(body.hinge)} min={-20} max={85} unit="°" low="Backward" high="Forward" onChange={v=>updateBody({hinge:v})}/>
+                <Parameter label="Spinal flexion / extension" value={Math.round(body.flexion)} min={-25} max={45} unit="°" low="Extend" high="Flex" onChange={v=>updateBody({flexion:v})}/>
+                <Parameter label="Side bend" value={Math.round(body.side)} min={-30} max={30} unit="°" low="Left" high="Right" onChange={v=>updateBody({side:v})}/>
+                <Parameter label="Trunk rotation" value={Math.round(body.twist)} min={-45} max={45} unit="°" low="Left" high="Right" onChange={v=>updateBody({twist:v})}/>
+              </>}
+              <Parameter label="Total external load" value={body.load} min={0} max={100} unit=" kg" low="No added load" high="100 kg" onChange={v=>updateBody({load:v})}/>
+              <div className="body-load-reading"><strong>{Math.round(body.load*9.81)} N</strong> external weight force · shared between both hands in standing presets.</div>
+              <p className="separation-note">Amber arrows and the spinal line illustrate the added load path. They are not internal disc forces or a pain scale. In floor poses the load is schematic; no hand-held weights are shown. Pose-driven visualization: muscle forces and joint collisions are not solved. Movement does not automatically change your herniation settings. No exercise prescription or safe lifting limit is provided.</p>
+              <button className="compare-button" onClick={()=>setBody({...DEFAULT_BODY,enabled:true,opacity:body.opacity})}>Reset body pose</button>
+            </>}
+          </section>
+
           <div className="panel-title">
             <span className="eyebrow">DISC PARAMETERS</span>
             <span className="live-badge">

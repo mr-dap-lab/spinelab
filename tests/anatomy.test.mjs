@@ -341,3 +341,18 @@ test('extrusion alone displaces nerves without a bulge parameter', () => {
   assert.ok(model.nerveResponses.some(r => Math.max(...r.displacement) > 0.01));
   disposeModel(model.group);
 });
+
+test('full sourced spine remains finite during body motion and returns to its neutral pose', async () => {
+  const { createBodyMotion, DEFAULT_BODY } = await import('../lib/body-motion.js');
+  const model = scene('L4–L5', {}, { focus: false });
+  const rig = createBodyMotion(model, parts);
+  model.group.add(rig.group);
+  for (const movement of ['squat', 'catcow', 'lunge', 'push', 'rotate']) {
+    rig.update({ ...DEFAULT_BODY, enabled: true, movement }, 40);
+    finiteModel(model);
+  }
+  rig.update({ ...DEFAULT_BODY, enabled: true }, 0);
+  const bone = model.group.children.find(o => o.userData.kind === 'bone');
+  assert.ok(bone.quaternion.angleTo(new (await import('three')).Quaternion()) < 1e-7);
+  disposeModel(model.group);
+});
