@@ -14,7 +14,7 @@ export type SceneProps = {
   level: string;
   scenarios: Record<
     string,
-    { bulge: number; compression: number; direction: number; spread: number }
+    { rupture: number; bulge: number; compression: number; direction: number; spread: number }
   >;
   layers: {
     bones: boolean;
@@ -249,6 +249,7 @@ export default function SpineView(props: SceneProps) {
                 ...next.scenarios,
                 [next.level]: {
                   ...(next.scenarios[next.level] || NEUTRAL_SCENARIO),
+                  rupture: 0,
                   bulge: 0,
                   compression: 0,
                 },
@@ -391,6 +392,7 @@ export default function SpineView(props: SceneProps) {
                 const next = { ...current };
                 const speed = (velocities[level] ||= {});
                 for (const key of [
+                  'rupture',
                   'bulge',
                   'compression',
                   'direction',

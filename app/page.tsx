@@ -33,6 +33,7 @@ import {
   validateScenario,
 } from '@/lib/scenarios.js';
 type Scenario = {
+  rupture: number;
   bulge: number;
   compression: number;
   direction: number;
@@ -169,6 +170,7 @@ export default function Home() {
           type: 'object',
           properties: {
             level: { type: 'string', enum: LEVELS },
+            rupture: { type: 'number', minimum: 0, maximum: 100 },
             bulge: { type: 'number', minimum: 0, maximum: 100 },
             compression: { type: 'number', minimum: 0, maximum: 60 },
             direction: { type: 'number', enum: [-35, 0, 35] },
@@ -574,6 +576,22 @@ export default function Home() {
               high="More compressed"
             />
           </div>
+          <Parameter
+            label="Annulus rupture / nucleus extrusion"
+            value={selected.rupture}
+            unit="%"
+            onChange={(v) => {
+              change('rupture', v);
+              if (v > 0 && !tissueSection) {
+                setTissueSection(true); setFocus(true); setCutaway(true); camera('section');
+              }
+            }}
+            low="Intact" high="Extruded"
+          />
+          <p className="separation-note">
+            {selected.rupture === 0 ? 'Intact annulus' : selected.rupture <= 35 ? 'Tear progressing through the annulus' : 'Nucleus moving through the full-thickness tear'}.
+            {' '}Illustrative progression, not a damage percentage. Rewinding resets the model; it does not represent healing.
+          </p>
           <div className="direction-field">
             <label id="direction-label">Herniation direction</label>
             <Select
@@ -643,7 +661,7 @@ export default function Home() {
           <button
             className="compare-button"
             onClick={() => setMotionTick((t) => t + 1)}
-            disabled={selected.bulge === 0 && selected.compression === 0}
+            disabled={selected.bulge === 0 && selected.compression === 0 && selected.rupture === 0}
           >
             Replay deformation <span>↻</span>
           </button>

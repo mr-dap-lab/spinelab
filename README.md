@@ -85,3 +85,8 @@ Geometry tests validate mesh coverage, finite coordinates and triangle indices, 
 ## Medical disclaimer
 
 SpineLab is educational only and does not provide medical advice, diagnosis, or treatment. Its anatomy and simulations may be incomplete, inaccurate, or wrong. Do not use it for healthcare or exercise-safety decisions. Consult a qualified clinician. The app includes a prominent notice and a fuller disclaimer with an as-is statement and a limitation of liability subject to applicable law. These notices are not a guarantee of legal protection.
+
+### Annulus rupture and nucleus extrusion
+The **Annulus rupture / nucleus extrusion** slider drives a prescribed educational sequence: a radial tear progresses through reconstructed lamellae, the edges splay, and an attached blue nucleus lobe advances through the opening. The remaining core contracts slightly to suggest material redistribution. Replay uses the existing damped animation; the extruded mesh participates in nerve contact and rigid-bone constraints. Moving the slider backward resets a scenario and does not depict healing.
+
+The timeline is not a measured damage percentage or a clinically calibrated fracture, fluid, or volume-conserving biomechanical solver. It does not simulate detached fragments, biological resorption, or predict pain. Anatomical background: [AAOS, Herniated Disk](https://orthoinfo.aaos.org/globalassets/pdfs/herniated-disk.pdf).

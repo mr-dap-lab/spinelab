@@ -296,3 +296,48 @@ test('disc columns follow curved rigid endplates while preserving an open gap', 
     assert.ok(!insideBone(upper, point) && !insideBone(lower, point));
   geometry.dispose();
 });
+
+test('rupture progression opens layers before extrusion and validates legacy scenarios', async () => {
+  const { ruptureState, tearAt, buildNucleusExtrusion } = await import('../lib/disc-tissue.js');
+  assert.equal(validateScenario({ ...NEUTRAL_SCENARIO, rupture: NaN }), null);
+  assert.equal(validateScenario({ ...NEUTRAL_SCENARIO, rupture: 101 }), null);
+  const { rupture, ...legacy } = NEUTRAL_SCENARIO;
+  assert.equal(validateScenario(legacy).rupture, 0);
+  const early = { ...NEUTRAL_SCENARIO, direction: 0, rupture: 15 };
+  assert.ok(tearAt(early, 0, 0.6));
+  assert.equal(tearAt(early, 0, 0.98), false);
+  assert.equal(ruptureState(early).extrusion, 0);
+  for (const part of parts.filter(p => p.kind === 'disc')) {
+    assert.equal(buildNucleusExtrusion(part, early), null);
+  }
+  const part = parts.find(p => p.kind === 'disc');
+  const small = buildNucleusExtrusion(part, { ...early, rupture: 60 });
+  const large = buildNucleusExtrusion(part, { ...early, rupture: 100 });
+  small.computeBoundingBox(); large.computeBoundingBox();
+  assert.ok(large.boundingBox.max.z > small.boundingBox.max.z, 'Extruded material advances outward');
+  small.dispose(); large.dispose();
+  assert.ok(tearAt({ ...early, rupture: 100 }, 0, 1));
+  assert.equal(tearAt({ ...early, rupture: 100 }, Math.PI, 1), false);
+});
+
+test('extruded nucleus appears at all levels, grows outward and resets cleanly', () => {
+  for (const level of LEVELS) {
+    const model = scene(level, { [level]: { ...NEUTRAL_SCENARIO, rupture: 100, compression: 60, bulge: 70 } }, { tissueSection: true });
+    finiteModel(model);
+    const meshes = [];
+    model.group.traverse(o => { if (o.userData.tissue === 'extruded-nucleus') meshes.push(o); });
+    assert.equal(meshes.length, 1, level);
+    assert.ok(meshes[0].geometry.index.count > 0);
+    disposeModel(model.group);
+  }
+  const neutral = scene('L4–L5');
+  neutral.group.traverse(o => assert.notEqual(o.userData.tissue, 'extruded-nucleus'));
+  disposeModel(neutral.group);
+});
+
+test('extrusion alone displaces nerves without a bulge parameter', () => {
+  const model = scene('L4–L5', { 'L4–L5': { ...NEUTRAL_SCENARIO, rupture: 100, direction: 0 } });
+  assert.ok(model.contactCount > 0);
+  assert.ok(model.nerveResponses.some(r => Math.max(...r.displacement) > 0.01));
+  disposeModel(model.group);
+});
