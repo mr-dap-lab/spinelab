@@ -1797,3 +1797,63 @@ h1 {
     flex: 1;
   }
 }
+.medical-notice {
+  padding: 10px 20px;
+  background: #302d29;
+  border-bottom: 1px solid #655949;
+  color: #e0d8ca;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.medical-notice strong {
+  margin-right: 5px;
+  color: #f3e8d5;
+}
+.medical-notice button {
+  margin-left: 10px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.control-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  margin-bottom: 14px;
+}
+.control-shortcuts button {
+  border: 1px solid #6c8494;
+  border-radius: 6px;
+  padding: 7px 10px;
+  color: #e2edf4;
+}
+.control-shortcuts span {
+  color: #a9b9c5;
+}
+#compression-control {
+  padding: 12px 10px 0;
+  margin: 0 -10px 12px;
+  border: 1px solid #6c849450;
+  border-radius: 8px;
+  background: #293440;
+}
+@media (min-width: 901px) {
+  .viewport,
+  .anatomy-panel,
+  .scenario-panel {
+    height: calc(100dvh - 130px);
+  }
+  .scenario-panel {
+    scrollbar-width: thin;
+    scrollbar-color: #8ca3b4 #26313d;
+  }
+}
+@media (max-width: 700px) {
+  .medical-notice {
+    padding: 10px 16px;
+  }
+  .control-shortcuts span {
+    display: none;
+  }
+}

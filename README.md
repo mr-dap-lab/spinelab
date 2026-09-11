@@ -47,6 +47,7 @@ The normal `npm run build` builds the separate Sites/Cloudflare target. `npm run
 - 24 individually modeled vertebrae (C1–L5), sacrum, and 23 discs (C2–C3 through L5–S1).
 - Actual neutral bone and disc surfaces from BodyParts3D 3.0. Original relative positioning and curvature are retained at neutral settings; source meshes are polygon-reduced.
 - Adjustable herniation uses a geometric deformation of the original disc mesh. It is **not** a validated finite-element or biomechanical model. The size slider is an illustrative 0–100 parameter, not millimeters or pressure.
+- Bone contact uses a cached triangle hierarchy, adjacent-endplate envelopes, and sweep-and-slide constraints for blocked columns. Compression spreads tissue outward; superior bone translation is capped by sampled neutral endplate clearance. Bones remain rigid. This is an approximate geometric response, not a finite-element or validated continuum model. Source surface errors, unsampled collisions, and extreme configurations can still produce artifacts.
 - Height reduction changes the disc's local thickness and shifts superior bones vertically. It does not simulate posture, loading forces, joint mechanics, exercise, or treatment.
 - Neural pathways are explicitly schematic, and not patient-specific. The spinal cord transitions to nerve roots in the upper lumbar region.
 - “Separate bones” shifts bones away from the disc/neural assembly without changing collision calculations.
@@ -80,3 +81,7 @@ Geometry tests validate mesh coverage, finite coordinates and triangle indices, 
 - [AANS: Herniated Disc](https://www.aans.org/patients/conditions-treatments/herniated-disc/)
 
 - [Intervertebral disc anatomy — NCBI Bookshelf](https://www.ncbi.nlm.nih.gov/books/NBK470583/)
+
+## Medical disclaimer
+
+SpineLab is educational only and does not provide medical advice, diagnosis, or treatment. Its anatomy and simulations may be incomplete, inaccurate, or wrong. Do not use it for healthcare or exercise-safety decisions. Consult a qualified clinician. The app includes a prominent notice and a fuller disclaimer with an as-is statement and a limitation of liability subject to applicable law. These notices are not a guarantee of legal protection.

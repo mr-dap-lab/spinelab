@@ -15,3 +15,5 @@ Rendering fix: added the missing base RenderPass before SSAO and OutputPass. SSA
 September 10 update: tested contact onset, displacement constraints, neutral release, and invariance under bone separation. The spatial index accelerates exact triangle intersections; it does not approximate disc contours with a bounding box. Browser QA confirmed localized red neural contact and separated bones in a phone viewport. All anatomy-layer controls remain available on mobile.
 
 Tissue update: verified background-drag panning and anatomy-drag rotation in the browser. Added all-level cutaway topology/finite-coordinate tests, frame-rate-independent spring convergence, and nucleus migration with annulus thinning. Internal layers are reconstructed and not medically validated.
+
+Rigid-contact update: restored a prominent disc tightness/compression control and panel navigation; added medical-use and accuracy notices. Tests cover rigid-surface sliding, no tunneling in the box fixture, free motion, unchanged bone vertices, curved endplate contact, neutral release, and finite all-level geometry. Source meshes and the simplified contact approximation are not clinically validated.

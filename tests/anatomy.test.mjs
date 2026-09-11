@@ -232,3 +232,67 @@ test('posterior nucleus migration stretches and thins the annulus without crossi
   assert.ok(shell.z - core.z > 0);
   assert.ok(shell.z - core.z < outer.z - inner.z);
 });
+
+test('rigid bone contact blocks penetration and retains sliding along the surface', async () => {
+  const { BoxGeometry, Vector3 } = await import('three');
+  const { rigidBone, constrainToBones, insideBone } =
+    await import('../lib/bone-contact.js');
+  const geometry = new BoxGeometry(2, 2, 2),
+    before = Array.from(geometry.attributes.position.array),
+    bone = rigidBone(geometry);
+  assert.equal(insideBone(bone, new Vector3()), true);
+  assert.equal(insideBone(bone, new Vector3(0, 2, 0)), false);
+  const contact = constrainToBones(
+    new Vector3(0, 2, 0),
+    new Vector3(0.7, 0, 0),
+    [bone],
+  );
+  assert.equal(contact.touched, true);
+  assert.ok(contact.point.y >= 1);
+  assert.ok(contact.point.x > 0.65);
+  assert.equal(insideBone(bone, contact.point), false);
+  const free = constrainToBones(
+    new Vector3(0, 2, 0),
+    new Vector3(0.7, 1.5, 0),
+    [bone],
+  );
+  assert.equal(free.touched, false);
+  assert.deepEqual(free.point.toArray(), [0.7, 1.5, 0]);
+  const crossing = constrainToBones(
+    new Vector3(0, 2, 0),
+    new Vector3(0, -2, 0),
+    [bone],
+  );
+  assert.ok(
+    crossing.point.y >= 1,
+    'A large step must not tunnel through the bone',
+  );
+  assert.deepEqual(Array.from(geometry.attributes.position.array), before);
+  geometry.dispose();
+});
+
+test('disc columns follow curved rigid endplates while preserving an open gap', async () => {
+  const { SphereGeometry, Vector3 } = await import('three');
+  const { rigidBone, constrainDiscColumn, insideBone } =
+    await import('../lib/bone-contact.js');
+  const geometry = new SphereGeometry(1, 32, 24),
+    upper = rigidBone(geometry, 2),
+    lower = rigidBone(geometry, -2);
+  const a = constrainDiscColumn(new Vector3(), new Vector3(0, 1.8, 0), [
+    upper,
+    lower,
+  ]);
+  const b = constrainDiscColumn(
+    new Vector3(0.5, 0, 0),
+    new Vector3(0.5, 1.8, 0),
+    [upper, lower],
+  );
+  assert.ok(a.touched && b.touched);
+  assert.ok(
+    b.point.y > a.point.y + 0.08,
+    'Contact follows the curved bone surface',
+  );
+  for (const point of [a.point, b.point])
+    assert.ok(!insideBone(upper, point) && !insideBone(lower, point));
+  geometry.dispose();
+});

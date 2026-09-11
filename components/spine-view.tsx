@@ -41,6 +41,7 @@ export default function SpineView(props: SceneProps) {
     'loading',
   );
   const [contactCount, setContactCount] = useState(0);
+  const [boneContact, setBoneContact] = useState(false);
   latest.current = props;
   useEffect(() => {
     let disposed = false,
@@ -266,6 +267,7 @@ export default function SpineView(props: SceneProps) {
 
             model = anatomy.buildSpine(next, parts);
             setContactCount(model.contactCount);
+            setBoneContact(model.boneContactCount > 0);
             scene.add(model.group);
             if (lastFocus !== next.focus || lastLevel !== next.level) {
               moveCamera(next.view, lastFocus === undefined);
@@ -515,6 +517,9 @@ export default function SpineView(props: SceneProps) {
               ? 'Disc–nerve contact'
               : 'No disc–nerve contact detected'}
           <small>Illustrative contact · not a pain prediction</small>
+          {boneContact && (
+            <small>Disc constrained by rigid bone surfaces</small>
+          )}
         </div>
       )}
       {status !== 'ready' && (

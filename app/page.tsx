@@ -260,6 +260,23 @@ export default function Home() {
           <span>About the model</span>
         </button>
       </header>
+      <div className="medical-notice" role="note">
+        <strong>Educational model — not medical advice.</strong> Anatomy and
+        simulations may be inaccurate or wrong. Do not use this app for
+        diagnosis or treatment decisions.
+        <button
+          onClick={() => {
+            setAbout(true);
+            requestAnimationFrame(() =>
+              document
+                .getElementById('model-notes')
+                ?.scrollIntoView({ behavior: 'smooth' }),
+            );
+          }}
+        >
+          Read disclaimer
+        </button>
+      </div>
       <div className="workspace">
         <aside className="anatomy-panel">
           <div className="panel-title">
@@ -527,6 +544,18 @@ export default function Home() {
             <span>{regions.find((r) => r.prefix === region)?.sub}</span>
           </div>
           <p className="scenario-intro">Illustrative disc deformation</p>
+          <div className="control-shortcuts">
+            <button
+              onClick={() =>
+                document
+                  .getElementById('compression-control')
+                  ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+              }
+            >
+              Disc tightness
+            </button>
+            <span>Scroll this panel for all controls ↓</span>
+          </div>
           <Parameter
             label="Herniation size"
             value={selected.bulge}
@@ -534,15 +563,17 @@ export default function Home() {
             low="None"
             high="Larger"
           />
-          <Parameter
-            label="Disc height reduction"
-            value={selected.compression}
-            max={60}
-            unit="%"
-            onChange={(v) => change('compression', v)}
-            low="Baseline height"
-            high="More compressed"
-          />
+          <div id="compression-control">
+            <Parameter
+              label="Disc tightness / compression"
+              value={selected.compression}
+              max={60}
+              unit="%"
+              onChange={(v) => change('compression', v)}
+              low="Less tight"
+              high="More compressed"
+            />
+          </div>
           <div className="direction-field">
             <label id="direction-label">Herniation direction</label>
             <Select
@@ -664,8 +695,10 @@ export default function Home() {
             <span>
               Nerves deflect when the disc surface reaches them. Red marks
               geometric contact, which does not necessarily cause pain. Annulus
-              and nucleus move together with damped animation. This educational
-              model does not calculate tissue forces or rupture.
+              and nucleus move together with damped animation. Bone surfaces
+              constrain the disc and redirect tissue along contact surfaces.
+              This educational model does not calculate tissue forces, damage,
+              or rupture.
             </span>
           </div>
           <button
@@ -683,6 +716,30 @@ export default function Home() {
         <section className="about-panel" id="model-notes">
           <div>
             <span className="eyebrow">MODEL NOTES</span>
+            <h2>Medical disclaimer</h2>
+            <p>
+              SpineLab is provided for general education and visualization only.
+              It does not provide medical advice, diagnosis, treatment, or a
+              professional opinion. Its anatomy, calculations, simulations,
+              labels, and outputs may be incomplete, inaccurate, misleading, or
+              wrong. They are not clinically validated and do not represent your
+              individual anatomy or MRI.
+            </p>
+            <p>
+              Do not rely on this app to assess symptoms, determine the cause or
+              severity of pain, choose exercises, decide whether an activity is
+              safe, or make healthcare decisions. Consult a qualified healthcare
+              professional, and never disregard or delay professional care
+              because of this app.
+            </p>
+            <p>
+              SpineLab is provided “as is,” without warranties of accuracy,
+              completeness, fitness for a particular purpose, or clinical
+              effectiveness. To the extent permitted by applicable law, its
+              authors and operators disclaim liability for losses or harm
+              arising from use of or reliance on the app. Nothing in this notice
+              excludes rights or liabilities that cannot legally be excluded.
+            </p>
             <h2>Reference anatomy. Illustrative scenarios.</h2>
             <p>
               Bone and baseline disc surfaces are sourced from BodyParts3D 3.0:
