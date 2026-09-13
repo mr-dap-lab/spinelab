@@ -42,3 +42,35 @@ test('body deformation preserves source buffers, rigid bone size and neutral res
     rig.group.traverse(o=>{if(o.isMesh){for(const v of o.matrix.elements)assert.ok(Number.isFinite(v));if(o.geometry.attributes.position)for(const v of o.geometry.attributes.position.array)assert.ok(Number.isFinite(v));}});
   }
 });
+
+test('anatomical skin does not bridge hands to hips and floor poses stay grounded',async()=>{
+  const {readFile}=await import('node:fs/promises');
+  const {GLTFLoader}=await import('three/addons/loaders/GLTFLoader.js');
+  const {prepareAnatomy}=await import('../lib/spine-model.js');
+  async function load(name){const bytes=await readFile(new URL(`../public/anatomy/${name}.glb`,import.meta.url));return new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');}
+  const asset=await load('body');let source;asset.scene.traverse(o=>{if(o.isMesh)source=o.geometry;});
+  const group=new T.Group(),rig=createBodyMotion({group},prepareAnatomy(await load('spine')),source);group.add(rig.group);
+  const base=source.attributes.position,indices=source.index.array;
+  const edges=new Map(),a=new T.Vector3(),b=new T.Vector3();
+  for(let i=0;i<indices.length;i+=3)for(let j=0;j<3;j++){
+    const x=indices[i+j],y=indices[i+(j+1)%3],key=Math.min(x,y)*base.count+Math.max(x,y);
+    if(!edges.has(key))edges.set(key,[x,y,a.fromBufferAttribute(base,x).distanceTo(b.fromBufferAttribute(base,y))]);
+  }
+  for(const movement of ['squat','pull','catcow','push'])for(const phase of [0,25,50,75,100]){
+    rig.update({...DEFAULT_BODY,movement},phase,1/30,true);
+    const posed=rig.bodyPickables[0].geometry.attributes.position;
+    for(const [x,y,rest] of edges.values()){
+      const length=a.fromBufferAttribute(posed,x).distanceTo(b.fromBufferAttribute(posed,y));
+      assert.ok(length-rest<3,`${movement} ${phase}: stretched skin bridge (${length-rest})`);
+      if(Math.abs(base.getX(x))>8.5 && Math.abs(base.getX(y))>8.5 && base.getY(x)<-14 && base.getY(y)<-14)
+        assert.ok(Math.abs(length-rest)<.025,`${movement}: finger geometry must move with the hand`);
+    }
+    if(movement==='catcow'||movement==='push'){
+      assert.ok(Math.abs(rig.currentBounds().min.y+46.1352)<.002,`${movement}: surface must meet the fixed floor`);
+      for(let i=0;i<posed.count;i++)assert.ok(posed.getY(i)+rig.group.position.y>=-46.137,`${movement}: floor penetration`);
+    }
+  }
+  // The central anterior genital surface is omitted in the distributed asset.
+  for(let i=0;i<base.count;i++)if(Math.abs(base.getX(i))<1.8&&base.getY(i)>-18.5&&base.getY(i)<-13)
+    assert.ok(base.getZ(i)>=-3.2-.18*(base.getY(i)+14)+.06*base.getX(i)**2-.3);
+});

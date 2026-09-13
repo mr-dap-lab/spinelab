@@ -22,3 +22,5 @@ https://dbarchive.biosciencedbc.jp/en/bodyparts3d/lic.html
 For the specific converted source distribution here, the original CC BY-SA 2.1 Japan attribution and share-alike terms are retained.
 
 Body overlay update: FMA7163 skin from the same converted BodyParts3D distribution. Vertex clustering at 8 mm (4 mm in the head) and duplicate/degenerate triangle removal reduce download and rendering cost. The identical original spine coordinate transform is applied; there is no independent body rescaling. body-source.json records its source and checksum. Articulated motion and skinning are SpineLab derivatives, unvalidated for clinical use. The body GLB and derivatives retain CC BY-SA 2.1 Japan.
+
+Body surface repair: external genital detail smoothed into a neutral pelvic envelope; closed outer skin reconstructed from anterior/posterior scan envelopes at 6 mm and Taubin-smoothed. This changes surface detail while retaining dataset registration and uniform scale.
