@@ -63,7 +63,24 @@ test('anatomical skin does not bridge hands to hips and floor poses stay grounde
       const length=a.fromBufferAttribute(posed,x).distanceTo(b.fromBufferAttribute(posed,y));
       assert.ok(length-rest<3,`${movement} ${phase}: stretched skin bridge (${length-rest})`);
       if(Math.abs(base.getX(x))>8.5 && Math.abs(base.getX(y))>8.5 && base.getY(x)<-14 && base.getY(y)<-14)
-        assert.ok(Math.abs(length-rest)<.025,`${movement}: finger geometry must move with the hand`);
+        {
+          const expected=(movement==='catcow'||movement==='push')?a.fromBufferAttribute(base,x).applyMatrix4(new T.Matrix4().set(1,0,0,0,0,1,0,0,0,-.3,1,0,0,0,0,1)).distanceTo(b.fromBufferAttribute(base,y).applyMatrix4(new T.Matrix4().set(1,0,0,0,0,1,0,0,0,-.3,1,0,0,0,0,1))):rest;
+          assert.ok(Math.abs(length-expected)<.025,`${movement}: finger geometry must move with the planted hand`);
+        }
+    }
+    if(movement==='push'&&(phase===0||phase===100))assert.ok(rig.metrics.elbowFlexion<5,`Push-up top must extend arms: ${rig.metrics.elbowFlexion}`);
+    if(movement==='push'&&phase===50)assert.ok(rig.metrics.elbowFlexion>75,`Push-up bottom must bend arms: ${rig.metrics.elbowFlexion}`);
+    if(movement==='catcow'){
+      let heel=0,toe=0,heels=0,toes=0,lowestFoot=Infinity;
+      for(let i=0;i<posed.count;i++)if(base.getY(i)<-44){
+        const y=posed.getY(i)+rig.group.position.y;
+        lowestFoot=Math.min(lowestFoot,y);
+        if(base.getZ(i)>.5){heel+=y;heels++;}
+        if(base.getZ(i)<-3){toe+=y;toes++;}
+      }
+      assert.ok(heels&&toes,'Actual heel and toe surface samples exist');
+      assert.ok(heel/heels-toe/toes>1.5,'Tucked toes must sit below raised heels');
+      assert.ok(lowestFoot< -45.9,'Toes must remain in contact with the floor');
     }
     if(movement==='catcow'||movement==='push'){
       assert.ok(Math.abs(rig.currentBounds().min.y+46.1352)<.002,`${movement}: surface must meet the fixed floor`);
