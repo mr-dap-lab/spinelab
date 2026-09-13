@@ -1866,3 +1866,19 @@ h1 {
 .body-playback button { flex: 1; min-height: 42px; background: #2c5259; color: white; border-radius: 7px; font-size: 12px; padding: 8px; }
 .body-playback button + button { background: #d4dfdc; color: #293d42; }
 .body-load-reading { font-size: 12px; line-height: 1.6; background: #f4e5c9; padding: 10px; border-radius: 7px; }
+.inspector-tabs { position: sticky; top: -20px; z-index: 5; display: flex; gap: 4px; padding: 8px 0 12px; background: #f5f5f0; margin-bottom: 12px; }
+.inspector-tabs button { flex: 1; padding: 12px 6px; border-radius: 8px; font-size: 12px; color: #566a6f; background: #e8ece8; }
+.inspector-tabs button[aria-pressed="true"] { background: #31535a; color: #fff; }
+.body-controls { background: transparent; border: 0; padding: 0; }
+.body-playback button[aria-pressed="true"] { outline: 2px solid #92b2b4; outline-offset: 2px; }
+.camera-bar { flex-wrap: wrap; gap: 6px; }
+.camera-actions button { width: auto; min-width: 34px; padding: 0 10px; white-space: nowrap; }
+@media(max-width:900px){ .inspector-tabs { top: 0; } .camera-presets,.camera-actions{display:flex;flex-wrap:wrap;} .camera-bar{justify-content:center;} }
+.body-workspace .viewport-label {display:none;}
+.body-view .contact-indicator {top:auto;bottom:12px;left:12px;max-width:240px;background:rgba(29,37,44,.85);font-size:10px;}
+.inspector-tabs {background:#222b32;}
+.inspector-tabs button {background:#2b373f;color:#bfcdcf;}
+.inspector-tabs button[aria-pressed="true"] {background:#536d74;color:#fff;}
+.body-select select {background:#2b373f;color:#e3eaea;border-color:#526168;}
+.body-load-reading {background:#3d3b32;color:#e1d1ac;}
+@media(max-width:900px){.body-view .contact-indicator{font-size:9px;bottom:4px;left:6px;padding:6px;max-width:200px;}.body-view .contact-indicator small{font-size:8px;}}

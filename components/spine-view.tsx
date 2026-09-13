@@ -69,9 +69,9 @@ export default function SpineView(props: SceneProps) {
           { SSAOPass },
           { OutputPass },
           { RenderPass },
-          { createBodyMotion, movementPose },
+          { createBodyMotion, movementPose, loadBodySurface },
         ]) => {
-          const parts = await anatomy.loadAnatomy();
+          const [parts, bodySurface] = await Promise.all([anatomy.loadAnatomy(), loadBodySurface()]);
           if (disposed || !host.current) return;
           const container = host.current,
             scene = new T.Scene();
@@ -101,7 +101,10 @@ export default function SpineView(props: SceneProps) {
           const camera = new T.PerspectiveCamera(34, 1, 0.05, 200);
           camera.position.set(21, 7, 39);
           const controls = new OrbitControls(camera, renderer.domElement);
-          controls.enableDamping = false;
+          controls.enableDamping = true;
+          controls.zoomToCursor = true;
+          controls.rotateSpeed = .65;
+          controls.panSpeed = .8;
           controls.screenSpacePanning = true;
           controls.dampingFactor = 0.09;
           controls.minDistance = 0.4;
@@ -176,7 +179,7 @@ export default function SpineView(props: SceneProps) {
             c.globalAlpha = 1;
           }
           let bodyRig: any = null, bodyPhase = 0, bodyTime = 0, bodyConfig = latest.current.body || DEFAULT_BODY;
-          let lastBodyEnabled = false;
+          let lastBodyEnabled = false, cameraScope='body';
           let model: any = null,
             raf = 0,
             needsRender = true,
@@ -198,28 +201,22 @@ export default function SpineView(props: SceneProps) {
               controls.update();
               return;
             }
-            const target = model.bounds.getCenter(new T.Vector3()),
-              size = model.bounds.getSize(new T.Vector3()),
-              distance =
-                (Math.max(
-                  size.length(),
-                  size.length() / Math.max(camera.aspect, 0.25),
-                ) /
-                  (2 * Math.tan((camera.fov * Math.PI) / 360))) *
-                1.25;
-            const vectors: Record<string, number[]> = {
-              oblique: [1, 0.35, 1.25],
-              posterior: [0, 0.02, 1],
-              anterior: [0, 0.02, -1],
-              side: [1, 0.03, 0],
-              axial: [0, 1, 0.0001],
-              section: [0, 1.7, -1.2],
-            };
-            const v = vectors[view] || vectors.oblique;
-            const end = new T.Vector3(...(v as [number, number, number]))
-              .normalize()
-              .multiplyScalar(distance)
-              .add(target);
+            if(view==='fit-body')cameraScope='body';
+            if(view==='fit-spine')cameraScope='spine';
+            const box = bodyRig ? bodyRig.currentBounds(cameraScope==='spine') : model.bounds;
+            const target=box.getCenter(new T.Vector3());
+            const vectors: Record<string,number[]>={oblique:[1,.25,1.5],posterior:[0,0,1],anterior:[0,0,-1],side:[1,0,0],axial:[0,1,.001],section:[0,1.7,-1.2]};
+            const direction=(view.startsWith('fit-')?camera.position.clone().sub(controls.target):new T.Vector3(...(vectors[view]||vectors.oblique) as [number,number,number])).normalize();
+            const right=new T.Vector3().crossVectors(new T.Vector3(0,1,0),direction).normalize();
+            if(right.lengthSq()<.01)right.set(1,0,0);
+            const up=new T.Vector3().crossVectors(direction,right).normalize();
+            const tan=Math.tan(T.MathUtils.degToRad(camera.fov/2));
+            let distance=1;
+            for(const x of [box.min.x,box.max.x])for(const y of [box.min.y,box.max.y])for(const z of [box.min.z,box.max.z]){
+              const corner=new T.Vector3(x,y,z).sub(target);
+              distance=Math.max(distance,Math.abs(corner.dot(up))/tan+corner.dot(direction),Math.abs(corner.dot(right))/(tan*camera.aspect)+corner.dot(direction));
+            }
+            const end=direction.multiplyScalar(distance*1.12).add(target);
             if (
               instant ||
               matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -276,12 +273,13 @@ export default function SpineView(props: SceneProps) {
 
             bodyRig = null;
             const enabled = latest.current.body?.enabled;
+            ao.enabled = !enabled && !matchMedia('(max-width: 700px)').matches;
             model = anatomy.buildSpine(enabled ? {...next, focus:false, cutaway:false, tissueSection:false, separation:0} : next, parts);
             if(enabled) {
-              bodyRig = createBodyMotion(model, parts);
+              bodyRig = createBodyMotion(model, parts, bodySurface);
               model.group.add(bodyRig.group);
               model.bounds.copy(bodyRig.bounds);
-              bodyRig.update(latest.current.body, bodyPhase);
+              bodyRig.update(latest.current.body, bodyPhase, 1/30, true);
             }
             setContactCount(model.contactCount);
             setBoneContact(model.boneContactCount > 0);
@@ -356,7 +354,8 @@ export default function SpineView(props: SceneProps) {
                   (plane: any) => plane.distanceToPoint(hit.point) < 0,
                 );
               });
-            const pan = latest.current.panMode || !overAnatomy;
+            const pan = latest.current.panMode || e.shiftKey || (!bodyRig && !overAnatomy);
+            if(pan && bodyRig && bodyConfig.follow)latest.current.onBodyPose?.({follow:false});
             controls.mouseButtons.LEFT = pan ? T.MOUSE.PAN : T.MOUSE.ROTATE;
             controls.touches.ONE = pan ? T.TOUCH.PAN : T.TOUCH.ROTATE;
             renderer.domElement.dataset.dragMode = pan ? 'pan' : 'rotate';
@@ -418,8 +417,15 @@ export default function SpineView(props: SceneProps) {
             if(bodyRig && now - bodyTime >= 33) {
               const delta = Math.min(.1,(now-bodyTime)/1000); bodyTime=now;
               if(bodyConfig.playing) bodyPhase=(bodyPhase+delta*bodyConfig.speed*100/6)%100;
-              if(bodyRig.update(bodyConfig,bodyPhase)) needsRender=true;
-              if(phaseReadout.current)phaseReadout.current.textContent=`Cycle ${Math.round(bodyPhase)}%`;
+              if(bodyRig.update(bodyConfig,bodyPhase,delta)) {
+                needsRender=true;
+                if(bodyConfig.follow && !tween && !bodyDrag) {
+                  const center=bodyRig.currentBounds(cameraScope==='spine').getCenter(new T.Vector3());
+                  const change=center.sub(controls.target).multiplyScalar(1-Math.exp(-delta*3));
+                  camera.position.add(change);controls.target.add(change);
+                }
+              }
+              if(phaseReadout.current)phaseReadout.current.textContent=`Cycle ${Math.round(bodyPhase)}% · max joint ${bodyRig.metrics.maxJoint.toFixed(1)}°`;
             }
             if (now - lastStep >= 45) {
               const dt = Math.min(0.1, (now - lastStep) / 1000);
@@ -498,6 +504,7 @@ export default function SpineView(props: SceneProps) {
             const toggle = next.enabled !== bodyConfig.enabled;
             bodyConfig = next; bodyTime = performance.now();
             if(toggle) rebuild({...latest.current, scenarios:displayed});
+            if(bodyRig && !next.playing)bodyRig.update(next,bodyPhase,1/30,true);
             needsRender = true;
           }};
           setStatus('ready');
@@ -558,7 +565,7 @@ export default function SpineView(props: SceneProps) {
     engine.current?.moveCamera(props.cameraCommand || props.view);
   }, [props.view, props.viewTick]);
   return (
-    <div className="scene-host" ref={host}>
+    <div className={'scene-host '+(props.body?.enabled?'body-view':'')} ref={host}>
       {status === 'ready' && (
         <div
           className={'contact-indicator ' + (contactCount ? 'is-contact' : '')}

@@ -30,7 +30,7 @@ test('body deformation preserves source buffers, rigid bone size and neutral res
   const group=new T.Group(),bone=new T.Mesh(source,new T.MeshBasicMaterial());bone.userData.kind='bone';group.add(bone);
   const soft=new T.Mesh(source,new T.MeshBasicMaterial());soft.position.y=1;group.add(soft);
   const parts=[{kind:'disc',center:new T.Vector3(0,-2,0)},{kind:'disc',center:new T.Vector3(0,2,0)}];
-  const rig=createBodyMotion({group},parts);
+  const rig=createBodyMotion({group},parts,source);
   rig.update({...DEFAULT_BODY,enabled:true,flexion:35,hinge:40,load:100},50);
   assert.ok(Math.abs(bone.scale.x-1)<1e-10 && Math.abs(bone.scale.y-1)<1e-10);
   assert.deepEqual(Array.from(source.attributes.position.array),before);

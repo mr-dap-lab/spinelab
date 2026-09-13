@@ -345,13 +345,20 @@ test('extrusion alone displaces nerves without a bulge parameter', () => {
 test('full sourced spine remains finite during body motion and returns to its neutral pose', async () => {
   const { createBodyMotion, DEFAULT_BODY } = await import('../lib/body-motion.js');
   const model = scene('L4–L5', {}, { focus: false });
-  const rig = createBodyMotion(model, parts);
+  const bytes = await readFile(new URL('../public/anatomy/body.glb', import.meta.url));
+  const skinAsset = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
+  let skin; skinAsset.scene.traverse(o=>{if(o.isMesh)skin=o.geometry;});
+  skin.computeVertexNormals();skin.computeBoundingBox();
+  const rig = createBodyMotion(model, parts, skin);
   model.group.add(rig.group);
   for (const movement of ['squat', 'catcow', 'lunge', 'push', 'rotate']) {
     rig.update({ ...DEFAULT_BODY, enabled: true, movement }, 40);
     finiteModel(model);
   }
   rig.update({ ...DEFAULT_BODY, enabled: true }, 0);
+  const surface=rig.bodyPickables[0].geometry.attributes.position;
+  const original=skin.attributes.position;
+  for(let i=0;i<surface.array.length;i++)assert.ok(Math.abs(surface.array[i]-original.array[i])<1e-4,'Neutral skin retains source registration and proportions');
   const bone = model.group.children.find(o => o.userData.kind === 'bone');
   assert.ok(bone.quaternion.angleTo(new (await import('three')).Quaternion()) < 1e-7);
   disposeModel(model.group);

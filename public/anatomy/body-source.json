@@ -1,0 +1,8 @@
+{
+  "source": "https://raw.githubusercontent.com/Kevin-Mattheus-Moerman/BodyParts3D/main/assets/BodyParts3D_data/stl/FMA7163.stl",
+  "sha256": "c7762a9b5044a7329ac99403b42551571a28325472103cf1900c379cd8dfcfb7",
+  "license": "CC BY-SA 2.1 Japan",
+  "vertices": 86878,
+  "triangles": 199727,
+  "processing": "Vertex clustering 8 mm, 4 mm head; same uniform coordinate transform as spine.glb. No independent body scaling."
+}

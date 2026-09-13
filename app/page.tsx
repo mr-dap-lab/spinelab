@@ -89,6 +89,7 @@ function Parameter({
   );
 }
 export default function Home() {
+  const [inspector, setInspector] = useState<'body'|'disc'>('body');
   const [body, setBody] = useState({...DEFAULT_BODY});
   const updateBody = (patch: Partial<typeof DEFAULT_BODY>) => setBody(p => ({...p,...patch,cycleTick:patch.phase!==undefined?p.cycleTick+1:p.cycleTick}));
   const [level, setLevel] = useState('L4–L5'),
@@ -389,7 +390,7 @@ export default function Home() {
             Reference model · Not your MRI
           </div>
         </aside>
-        <section className="viewport" aria-label="Anatomy workspace">
+        <section className={'viewport '+(body.enabled?'body-workspace':'')} aria-label="Anatomy workspace">
           <div className="viewport-top">
             <div className="breadcrumb">
               Spine <ChevronRight size={13} />
@@ -401,7 +402,7 @@ export default function Home() {
               <button
                 className={!focus ? 'active' : ''}
                 onClick={() => {
-                  setFocus(false);
+                  updateBody({enabled:false,playing:false});setFocus(false);
                   setCutaway(false);
                 }}
               >
@@ -409,7 +410,7 @@ export default function Home() {
               </button>
               <button
                 className={focus ? 'active' : ''}
-                onClick={() => setFocus(true)}
+                onClick={() => {updateBody({enabled:false,playing:false});setInspector('disc');setFocus(true);}}
               >
                 Disc detail
               </button>
@@ -428,7 +429,7 @@ export default function Home() {
               <span className="scene-caption">
                 {compare ? 'B' : 'LIVE VIEW'}{' '}
                 <span>
-                  {compare
+                  {body.enabled ? 'Anatomical body · articulated spine' : compare
                     ? 'Your scenario'
                     : focus
                       ? level + ' · Functional segment'
@@ -443,7 +444,7 @@ export default function Home() {
               <div>
                 <small>SELECTED DISC</small>
                 <strong>{level}</strong>
-                <button onClick={() => setFocus(!focus)}>
+                <button onClick={() => {updateBody({enabled:false,playing:false});setInspector('disc');setFocus(!focus);}}>
                   {focus ? 'See whole spine' : 'Inspect segment'}{' '}
                   <ArrowUpRight size={14} />
                 </button>
@@ -454,6 +455,7 @@ export default function Home() {
             <div className="camera-presets">
               {[
                 { id: 'oblique', name: '3D' },
+                { id: 'anterior', name: 'Front' },
                 { id: 'posterior', name: 'Back' },
                 { id: 'side', name: 'Side' },
                 { id: 'axial', name: 'Top' },
@@ -468,6 +470,7 @@ export default function Home() {
               ))}
             </div>
             <div className="camera-actions">
+              {body.enabled && <><button onClick={()=>camera('fit-body')}>Fit body</button><button onClick={()=>camera('fit-spine')}>Fit spine</button></>}
               <button
                 aria-label="Zoom in"
                 title="Zoom in"
@@ -501,6 +504,7 @@ export default function Home() {
                 title="Focus selected disc"
                 aria-label="Focus selected disc"
                 onClick={() => {
+                  updateBody({enabled:false,playing:false});setInspector('disc');
                   setFocus(true);
                   camera('oblique');
                 }}
@@ -519,8 +523,7 @@ export default function Home() {
               Anatomy: BodyParts3D / DBCLS
             </a>
             <span>
-              <Move size={13} /> Drag anatomy to rotate · Drag background to pan
-              · Pinch to zoom
+              <Move size={13} /> {body.enabled?'Orbit: drag · Pan: Shift-drag / two fingers · Pinch to zoom':'Drag anatomy to rotate · Drag background to pan · Pinch to zoom'}
             </span>
             <div className="legend">
               <span>
@@ -539,13 +542,18 @@ export default function Home() {
           </div>
         </section>
         <aside className="scenario-panel">
+          <div className="inspector-tabs" aria-label="Inspector">
+            <button aria-pressed={inspector==='body'} onClick={()=>setInspector('body')}>Body & movement</button>
+            <button aria-pressed={inspector==='disc'} onClick={()=>setInspector('disc')}>Disc & tightness</button>
+          </div>
+          <div hidden={inspector!=='body'}>
           <section className="body-controls" aria-label="Body and movement">
             <div className="layer-row">
               <label htmlFor="body-overlay">Human body & movement</label>
               <Switch id="body-overlay" checked={body.enabled} onCheckedChange={v => updateBody({enabled:v,playing:false})} />
             </div>
             {body.enabled && <>
-              <p className="separation-note">Whole-body view · illustrative body proportions. Hide this layer to return to the disc cutaway.</p>
+              <p className="separation-note">Matched BodyParts3D skin and spine · original scale and alignment.</p>
               <Parameter label="Body opacity" value={body.opacity} unit="%" low="Transparent" high="Opaque" onChange={v=>updateBody({opacity:v})} />
               <label className="body-select">Movement
                 <select value={body.movement} onChange={e=>updateBody({movement:e.target.value,phase:25,playing:false})}>
@@ -564,26 +572,33 @@ export default function Home() {
                   </select>
                 </label>
               </>}
-              <label className="body-select">Drag the body to
+              <div className="body-playback">
+                <button aria-pressed={body.drag==='camera'} onClick={()=>{updateBody({drag:'camera'});setPanMode(false);}}>Orbit</button>
+                <button aria-pressed={panMode} onClick={()=>{updateBody({drag:'camera'});setPanMode(true);}}>Pan</button>
+                <button aria-pressed={body.drag!=='camera'} onClick={()=>{updateBody({drag:'hinge',playing:false});setPanMode(false);}}>Pose</button>
+              </div>
+              <label className="body-select">Interaction
                 <select value={body.drag} onChange={e=>updateBody({drag:e.target.value})}>
                   <option value="hinge">Hinge at hips ↕</option><option value="flexion">Flex / extend spine ↕</option>
                   <option value="side">Bend sideways ↔</option><option value="twist">Rotate trunk ↔</option><option value="camera">Orbit camera</option>
                 </select>
               </label>
-              <p className="separation-note">Drag on the body to pose it. Drag the background to pan. Choose Orbit camera to turn the view. Sliders also work with keyboard and touch.</p>
+              <p className="separation-note">Orbit: drag anywhere. Pan: Shift-drag or two fingers. Pose: drag the skin using the selected axis. Pinch or scroll to zoom.</p>
               {body.movement==='manual' && <>
                 <Parameter label="Hip hinge" value={Math.round(body.hinge)} min={-20} max={85} unit="°" low="Backward" high="Forward" onChange={v=>updateBody({hinge:v})}/>
                 <Parameter label="Spinal flexion / extension" value={Math.round(body.flexion)} min={-25} max={45} unit="°" low="Extend" high="Flex" onChange={v=>updateBody({flexion:v})}/>
                 <Parameter label="Side bend" value={Math.round(body.side)} min={-30} max={30} unit="°" low="Left" high="Right" onChange={v=>updateBody({side:v})}/>
                 <Parameter label="Trunk rotation" value={Math.round(body.twist)} min={-45} max={45} unit="°" low="Left" high="Right" onChange={v=>updateBody({twist:v})}/>
               </>}
+              <div className="layer-row"><label htmlFor="follow-body">Keep movement centered</label><Switch id="follow-body" checked={body.follow} onCheckedChange={v=>updateBody({follow:v})}/></div>
               <Parameter label="Total external load" value={body.load} min={0} max={100} unit=" kg" low="No added load" high="100 kg" onChange={v=>updateBody({load:v})}/>
               <div className="body-load-reading"><strong>{Math.round(body.load*9.81)} N</strong> external weight force · shared between both hands in standing presets.</div>
-              <p className="separation-note">Amber arrows and the spinal line illustrate the added load path. They are not internal disc forces or a pain scale. In floor poses the load is schematic; no hand-held weights are shown. Pose-driven visualization: muscle forces and joint collisions are not solved. Movement does not automatically change your herniation settings. No exercise prescription or safe lifting limit is provided.</p>
+              <p className="separation-note">Disc-level joints now use regional stiffness, rotational limits, inertia and damping. Added load affects modeled joint compliance and bounded disc shortening. These are simplified, unvalidated mechanics—not clinical disc pressure, pain or safe-load estimates. Facet collision and individual muscle recruitment are not solved. Floor-pose loads remain schematic.</p>
               <button className="compare-button" onClick={()=>setBody({...DEFAULT_BODY,enabled:true,opacity:body.opacity})}>Reset body pose</button>
             </>}
           </section>
-
+          </div>
+          <div hidden={inspector!=='disc'}>
           <div className="panel-title">
             <span className="eyebrow">DISC PARAMETERS</span>
             <span className="live-badge">
@@ -738,6 +753,7 @@ export default function Home() {
               onCheckedChange={(v) => {
                 setCutaway(v);
                 if (v) {
+                  updateBody({enabled:false,playing:false});setInspector('disc');
                   setFocus(true);
                   camera('oblique');
                 }
@@ -778,6 +794,7 @@ export default function Home() {
             <RotateCcw size={14} />
             Reset this disc
           </button>
+          </div>
         </aside>
       </div>
       {about && (
