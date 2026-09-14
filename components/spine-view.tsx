@@ -341,7 +341,8 @@ export default function SpineView(props: SceneProps) {
             );
             scene.updateMatrixWorld(true);
             ray.setFromCamera(pointer, camera);
-            if(bodyRig && bodyConfig.drag!=='camera' && ray.intersectObjects(bodyRig.bodyPickables.filter((m:any)=>m.visible),false).length && e.button===0) {
+            const overBody = !!bodyRig && ray.intersectObjects(bodyRig.bodyPickables.filter((m:any)=>m.visible),false).length > 0;
+            if(overBody && bodyConfig.drag!=='camera' && !latest.current.panMode && !e.shiftKey && e.button===0) {
               bodyDrag={id:e.pointerId,x:e.clientX,y:e.clientY,config:{...bodyConfig,...movementPose(bodyConfig,bodyPhase)}};
               controls.enabled=false; renderer.domElement.setPointerCapture(e.pointerId);
               e.stopImmediatePropagation(); renderer.domElement.dataset.dragMode='pose'; return;
@@ -349,12 +350,15 @@ export default function SpineView(props: SceneProps) {
             const overAnatomy = ray
               .intersectObject(model.group, true)
               .some((hit) => {
+                for (let object: T.Object3D | null = hit.object; object; object = object.parent) {
+                  if (!object.visible) return false;
+                }
                 const mat = (hit.object as any).material;
                 return !mat?.clippingPlanes?.some(
                   (plane: any) => plane.distanceToPoint(hit.point) < 0,
                 );
               });
-            const pan = latest.current.panMode || e.shiftKey || (!bodyRig && !overAnatomy);
+            const pan = latest.current.panMode || e.shiftKey || (!overBody && !overAnatomy);
             if(pan && bodyRig && bodyConfig.follow)latest.current.onBodyPose?.({follow:false});
             controls.mouseButtons.LEFT = pan ? T.MOUSE.PAN : T.MOUSE.ROTATE;
             controls.touches.ONE = pan ? T.TOUCH.PAN : T.TOUCH.ROTATE;

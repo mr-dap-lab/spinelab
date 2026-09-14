@@ -523,7 +523,7 @@ export default function Home() {
               Anatomy: BodyParts3D / DBCLS
             </a>
             <span>
-              <Move size={13} /> {body.enabled?'Orbit: drag · Pan: Shift-drag / two fingers · Pinch to zoom':'Drag anatomy to rotate · Drag background to pan · Pinch to zoom'}
+              <Move size={13} /> {body.enabled?'Drag body to rotate · Drag background to pan · Pinch to zoom':'Drag anatomy to rotate · Drag background to pan · Pinch to zoom'}
             </span>
             <div className="legend">
               <span>
@@ -583,7 +583,7 @@ export default function Home() {
                   <option value="side">Bend sideways ↔</option><option value="twist">Rotate trunk ↔</option><option value="camera">Orbit camera</option>
                 </select>
               </label>
-              <p className="separation-note">Orbit: drag anywhere. Pan: Shift-drag or two fingers. Pose: drag the skin using the selected axis. Pinch or scroll to zoom.</p>
+              <p className="separation-note">Drag the body to rotate; drag empty space to reposition it. Pan also works with Shift-drag or two fingers. Pose: drag the body using the selected axis. Pinch or scroll to zoom.</p>
               {body.movement==='manual' && <>
                 <Parameter label="Hip hinge" value={Math.round(body.hinge)} min={-20} max={85} unit="°" low="Backward" high="Forward" onChange={v=>updateBody({hinge:v})}/>
                 <Parameter label="Spinal flexion / extension" value={Math.round(body.flexion)} min={-25} max={45} unit="°" low="Extend" high="Flex" onChange={v=>updateBody({flexion:v})}/>
