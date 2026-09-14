@@ -1881,4 +1881,10 @@ h1 {
 .inspector-tabs button[aria-pressed="true"] {background:#536d74;color:#fff;}
 .body-select select {background:#2b373f;color:#e3eaea;border-color:#526168;}
 .body-load-reading {background:#3d3b32;color:#e1d1ac;}
+.body-load-reading + .separation-note { margin-top: 14px; }
+/* Keep the toolbar compact even where older responsive rules stack it. */
+.viewport-top { height: auto; min-height: 52px; padding: 6px 16px; flex-shrink: 0; }
+@media (max-width: 700px) {
+  .viewport-top { min-height: 48px; padding: 6px 12px; gap: 8px; }
+}
 @media(max-width:900px){.body-view .contact-indicator{font-size:9px;bottom:4px;left:6px;padding:6px;max-width:200px;}.body-view .contact-indicator small{font-size:8px;}}

@@ -546,7 +546,7 @@ export default function Home() {
             <button aria-pressed={inspector==='body'} onClick={()=>setInspector('body')}>Body & movement</button>
             <button aria-pressed={inspector==='disc'} onClick={()=>setInspector('disc')}>Disc & tightness</button>
           </div>
-          <div hidden={inspector!=='body'}>
+          {inspector==='body' && <div>
           <section className="body-controls" aria-label="Body and movement">
             <div className="layer-row">
               <label htmlFor="body-overlay">Human body & movement</label>
@@ -597,8 +597,8 @@ export default function Home() {
               <button className="compare-button" onClick={()=>setBody({...DEFAULT_BODY,enabled:true,opacity:body.opacity})}>Reset body pose</button>
             </>}
           </section>
-          </div>
-          <div hidden={inspector!=='disc'}>
+          </div>}
+          {inspector==='disc' && <div>
           <div className="panel-title">
             <span className="eyebrow">DISC PARAMETERS</span>
             <span className="live-badge">
@@ -794,7 +794,7 @@ export default function Home() {
             <RotateCcw size={14} />
             Reset this disc
           </button>
-          </div>
+          </div>}
         </aside>
       </div>
       {about && (
