@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -89,6 +90,8 @@ function Parameter({
   );
 }
 export default function Home() {
+  const [welcomeOpen, setWelcomeOpen] = useState(true);
+  const exploreButton = useRef<HTMLButtonElement>(null);
   const [inspector, setInspector] = useState<'body'|'disc'>('body');
   const [body, setBody] = useState({...DEFAULT_BODY});
   const updateBody = (patch: Partial<typeof DEFAULT_BODY>) => setBody(p => ({...p,...patch,cycleTick:patch.phase!==undefined?p.cycleTick+1:p.cycleTick}));
@@ -238,6 +241,20 @@ export default function Home() {
   };
   return (
     <main className="spinelab">
+      <Dialog open={welcomeOpen} onOpenChange={setWelcomeOpen}>
+        <DialogContent className="welcome-atlas" initialFocus={exploreButton}>
+          <div className="welcome-kicker"><Activity aria-hidden="true" size={22} /> SPINELAB · INTERACTIVE ANATOMY</div>
+          <div className="welcome-emblem" aria-hidden="true"><Bone size={42} strokeWidth={1.25} /></div>
+          <DialogTitle className="welcome-title">A closer look<br />at your spine.</DialogTitle>
+          <DialogDescription className="welcome-description">Explore the structures behind movement. Look inside a disc, follow the nerves, and see how a reference spine moves in three dimensions.</DialogDescription>
+          <div className="welcome-features">
+            <div><Layers3 aria-hidden="true" /><span><strong>Look beneath the surface</strong><small>Separate bones, discs and neural structures.</small></span></div>
+            <div><Move aria-hidden="true" /><span><strong>Explore movement</strong><small>Rotate, reposition and play through body poses.</small></span></div>
+          </div>
+          <button ref={exploreButton} className="welcome-enter" onClick={() => setWelcomeOpen(false)}>Explore the spine <ArrowUpRight aria-hidden="true" size={20} /></button>
+          <p className="welcome-caution"><Info aria-hidden="true" size={16} /><span>For learning, not medical advice. This is reference anatomy, not your MRI. Simulations may be inaccurate and do not predict pain or safe movement.</span></p>
+        </DialogContent>
+      </Dialog>
       <header className="app-header">
         <a className="brand" href="/" aria-label="SpineLab home">
           <span className="brand-icon">
